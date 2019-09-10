@@ -20,8 +20,11 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/kfn"
 	"github.com/slinkydeveloper/kfn/pkg/kfn/image"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
+	"os"
 	"path"
 	"strings"
 )
@@ -58,6 +61,14 @@ func init() {
 }
 
 func runCmdFn(cmd *cobra.Command, args []string) {
+	dockerRegistry := viper.GetString("docker_registry")
+	kubeconfig := viper.GetString("kubeconfig")
+
+	if Verbose {
+		fmt.Printf("Using Kubeconfig: %v\n", kubeconfig)
+		fmt.Printf("Using Docker registry: %v\n", dockerRegistry)
+	}
+
 	function_path := args[0]
 
 	logf("Loading function %v", function_path)
@@ -91,7 +102,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	functionImage := image.FunctionImage{
 		ImageName:     imageName,
-		ImageRegistry: DockerRegistry,
+		ImageRegistry: dockerRegistry,
 		Tag:           imageTag,
 	}
 
@@ -113,7 +124,16 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	logf("Image pushed")
 
-	config, err := clientcmd.BuildConfigFromFlags("", Kubeconfig)
+	var config *rest.Config
+	if os.Getenv("KFN_IN_CLUSTER") == "true" {
+		config, err = rest.InClusterConfig()
+	} else {
+		if kubeconfig != "" {
+			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		} else {
+			config, err = clientcmd.BuildConfigFromKubeconfigGetter("", clientcmd.NewDefaultClientConfigLoadingRules().Load)
+		}
+	}
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create a k8s client config: %+v", err))
 	}

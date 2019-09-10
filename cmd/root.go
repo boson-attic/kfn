@@ -18,18 +18,14 @@ package cmd
 import (
 	"fmt"
 	"github.com/containers/buildah/pkg/unshare"
-	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
 var Verbose bool
-var DockerRegistry string
-var Kubeconfig string
 var k8sNamespace string
 
 // rootCmd represents the base command when called without any subcommands
@@ -43,7 +39,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		unshare.MaybeReexecUsingUserNamespace(true) // Do crazy stuff that allows buildah to work
+		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
 	},
 }
 
@@ -59,22 +55,17 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	var defaultKubeconfig string
-	home, err := homedir.Dir()
-	if err != nil {
-		defaultKubeconfig = filepath.Join(home, ".kube", "config")
-	}
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().StringVarP(&DockerRegistry, "dockerRegistry", "d", "", "Docker registry where to push the image")
-	rootCmd.PersistentFlags().StringVar(&Kubeconfig, "kubeconfig", defaultKubeconfig, "kubeconfig")
+	rootCmd.PersistentFlags().String("docker-registry", "", "Docker registry where to push the image")
+	viper.BindPFlag("docker_registry", rootCmd.PersistentFlags().Lookup("docker-registry"))
+
+	rootCmd.PersistentFlags().String("kubeconfig", "", "kubeconfig")
+	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
+
 	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
 	rootCmd.MarkFlagRequired("dockerRegistry")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -92,10 +83,11 @@ func initConfig() {
 
 		// Search config in home directory with name ".kfn" (without extension).
 		viper.AddConfigPath(home)
+		viper.AddConfigPath(".")
 		viper.SetConfigName(".kfn")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

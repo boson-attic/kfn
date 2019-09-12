@@ -15,7 +15,7 @@ go build -o kfn main.go
 Try to deploy `example-fn.js`
 
 ```bash
-./kfn run fn.js -v -d "docker.io/dockerusername" -i my-cool-fn --kubeconfig $HOME/.kube/config
+./kfn run fn.js
 ```
 
 

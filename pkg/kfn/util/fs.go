@@ -1,17 +1,18 @@
-package kfn
+package util
 
 import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
-func fsExist(path string) bool {
+func FsExist(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
 	} else {
@@ -19,27 +20,14 @@ func fsExist(path string) bool {
 	}
 }
 
-func downloadFile(url string, filepath string) error {
-	// Get the data
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
+func MkdirpIfNotExists(path string) error {
+	if path != "" && path != "." && !FsExist(path) {
+		return os.MkdirAll(path, os.ModePerm)
 	}
-	defer resp.Body.Close()
-
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	return err
+	return nil
 }
 
-func unzip(src string, dest string) ([]string, error) {
+func Unzip(src string, dest string) ([]string, error) {
 
 	var filenames []string
 
@@ -95,7 +83,46 @@ func unzip(src string, dest string) ([]string, error) {
 	return filenames, nil
 }
 
-func copy(source string, dest string) error {
+type WriteDest struct {
+	Filename string
+	Data     []byte
+}
+
+func WriteFiles(destDir string, dest ...WriteDest) error {
+	for _, d := range dest {
+
+		outFile, err := os.OpenFile(path.Join(destDir, d.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		_, err = outFile.Write(d.Data)
+		if err != nil {
+			return err
+		}
+
+		outFile.Close()
+	}
+	return nil
+}
+
+func PipeTemplateToFile(destination string, template *template.Template, data interface{}) error {
+	outFile, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	err = template.Execute(outFile, data)
+	if err != nil {
+		return err
+	}
+
+	outFile.Close()
+
+	return nil
+}
+
+func Copy(source string, dest string) error {
 	cmd := exec.Command("cp", "-r", source, dest)
 	err := cmd.Run()
 	if err != nil {

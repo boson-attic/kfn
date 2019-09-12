@@ -31,13 +31,8 @@ var k8sNamespace string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "kfn",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "TODO",
+	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
 	},
@@ -57,15 +52,17 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml")
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().String("docker-registry", "", "Docker registry where to push the image")
-	viper.BindPFlag("docker_registry", rootCmd.PersistentFlags().Lookup("docker-registry"))
+	rootCmd.PersistentFlags().String("registry", "", "Docker registry where to push the image")
+	viper.BindPFlag("registry", rootCmd.PersistentFlags().Lookup("registry"))
+	rootCmd.PersistentFlags().String("registry-username", "", "Username to access docker registry")
+	viper.BindPFlag("registry_username", rootCmd.PersistentFlags().Lookup("registry-username"))
+	rootCmd.PersistentFlags().String("registry-password", "", "Password to access docker registry")
+	viper.BindPFlag("registry_password", rootCmd.PersistentFlags().Lookup("registry-password"))
 
 	rootCmd.PersistentFlags().String("kubeconfig", "", "kubeconfig")
 	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
 
 	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
-	rootCmd.MarkFlagRequired("dockerRegistry")
-
 }
 
 // initConfig reads in config file and ENV variables if set.

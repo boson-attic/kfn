@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/containers/buildah/pkg/parse"
 	"github.com/slinkydeveloper/kfn/pkg/kfn"
 	"github.com/slinkydeveloper/kfn/pkg/kfn/image"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ var serviceName string
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run [function_name]",
+	Use:   "run <function_name>",
 	Short: "Run the provided function",
 	Long:  `TODO`,
 	Args:  cobra.ExactArgs(1),
@@ -61,7 +62,7 @@ func init() {
 }
 
 func runCmdFn(cmd *cobra.Command, args []string) {
-	dockerRegistry := viper.GetString("docker_registry")
+	dockerRegistry := viper.GetString("registry")
 	kubeconfig := viper.GetString("kubeconfig")
 
 	if Verbose {
@@ -106,9 +107,14 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		Tag:           imageTag,
 	}
 
+	ctx, err := parse.SystemContextFromOptions(cmd)
+	if err != nil {
+		panic(fmt.Sprintf("Error while trying to infer context: %v", err))
+	}
+
 	logf("Building image")
 
-	imageId, err := functionImage.BuildImage(kfn.TargetDirectory)
+	imageId, err := functionImage.BuildImage(ctx, kfn.TargetDirectory)
 
 	if err != nil {
 		panic(fmt.Sprintf("Error while building the image: %v", err))
@@ -116,7 +122,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	logf("Image built: %v", imageId)
 
-	err = functionImage.PushImage(imageId)
+	err = functionImage.PushImage(ctx, imageId)
 
 	if err != nil {
 		panic(fmt.Sprintf("Error while pushing the image: %v", err))

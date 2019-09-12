@@ -2,12 +2,13 @@ package image
 
 import (
 	"context"
-	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/containers/image/transports/alltransports"
+	"github.com/containers/image/types"
 	"github.com/containers/storage"
 	"github.com/opencontainers/go-digest"
+	"os"
 	"path"
 	"strings"
 )
@@ -17,7 +18,7 @@ type BuildCommand struct {
 	Wd      string
 }
 
-func (image FunctionImage) BuildImage(targetDir string) (string, error) {
+func (image FunctionImage) BuildImage(ctx *types.SystemContext, targetDir string) (string, error) {
 	buildStoreOptions, err := storage.DefaultStoreOptions(unshare.IsRootless(), unshare.GetRootlessUID())
 
 	if err != nil {
@@ -30,16 +31,26 @@ func (image FunctionImage) BuildImage(targetDir string) (string, error) {
 		return "", err
 	}
 
-	buildOpts := &buildah.CommonBuildOptions{
-		LabelOpts: nil,
+	buildOpts := &buildah.CommonBuildOptions{}
+
+	var isolation buildah.Isolation
+
+	envIsolation := os.Getenv("BUILDAH_ISOLATION")
+
+	switch envIsolation {
+	case "chroot":
+		isolation = buildah.IsolationChroot
+	default:
+		isolation = buildah.IsolationOCIRootless
 	}
 
 	opts := buildah.BuilderOptions{
 		FromImage:        "node:12-alpine",
 		Registry:         image.ImageRegistry,
-		Isolation:        buildah.IsolationOCIRootless,
+		Isolation:        isolation,
 		CommonBuildOpts:  buildOpts,
 		ConfigureNetwork: buildah.NetworkDefault,
+		SystemContext:    ctx,
 	}
 
 	builder, err := buildah.NewBuilder(context.TODO(), buildStore, opts)
@@ -83,7 +94,7 @@ func (image FunctionImage) BuildImage(targetDir string) (string, error) {
 
 	builder.SetCmd([]string{"node", "/home/node/src/index.js"})
 
-	imageRef, err := alltransports.ParseImageName(fmt.Sprintf("%s/%s:%s", image.ImageRegistry, image.ImageName, image.Tag))
+	imageRef, err := alltransports.ParseImageName(image.ImageName)
 
 	imageId, _, _, err := builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{})
 

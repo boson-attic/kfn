@@ -2,6 +2,7 @@ package kfn
 
 import (
 	"fmt"
+	"github.com/slinkydeveloper/kfn/pkg/kfn/util"
 	"os"
 	"path"
 	"strings"
@@ -42,24 +43,24 @@ func LoadFunction(location string) error {
 }
 
 func DownloadRuntimeAndCopyRequiredFiles() error {
-	if fsExist(path.Join(TargetDirectory, "src")) {
+	if util.FsExist(path.Join(TargetDirectory, "src")) {
 		// We reuse stuff already in target dir
 		return nil
 	}
 
 	runtimeZip := path.Join(TargetDirectory, "master.zip")
 
-	if err := downloadFile(runtimeRemoteZip, runtimeZip); err != nil {
+	if err := util.DownloadFile(runtimeRemoteZip, runtimeZip); err != nil {
 		return err
 	}
 
-	if _, err := unzip(runtimeZip, TargetDirectory); err != nil {
+	if _, err := util.Unzip(runtimeZip, TargetDirectory); err != nil {
 		return err
 	}
 
 	srcDir := path.Join(TargetDirectory, "src")
 
-	if err := copy(path.Join(TargetDirectory, "faas-js-runtime-image-master", "src"), srcDir); err != nil {
+	if err := util.Copy(path.Join(TargetDirectory, "faas-js-runtime-image-master", "src"), srcDir); err != nil {
 		return err
 	}
 
@@ -67,23 +68,23 @@ func DownloadRuntimeAndCopyRequiredFiles() error {
 }
 
 func initializeTargetDir() error {
-	if !fsExist(TargetDirectory) {
+	if !util.FsExist(TargetDirectory) {
 		return os.Mkdir(TargetDirectory, os.ModePerm)
 	}
 	return nil
 }
 
 func initializeUsrDir() error {
-	if !fsExist(UsrDirectory) {
+	if !util.FsExist(UsrDirectory) {
 		return os.Mkdir(UsrDirectory, os.ModePerm)
 	}
 	return nil
 }
 
 func downloadFunctionFromHTTP(remote string) error {
-	return downloadFile(remote, path.Join(TargetDirectory, "usr", "fn.js"))
+	return util.DownloadFile(remote, path.Join(TargetDirectory, "usr", "fn.js"))
 }
 
 func loadFunctionFileFromLocal(filepath string) error {
-	return copy(filepath, path.Join(TargetDirectory, "usr", "index.js"))
+	return util.Copy(filepath, path.Join(TargetDirectory, "usr", "index.js"))
 }

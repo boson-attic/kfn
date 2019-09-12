@@ -9,12 +9,12 @@ import (
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
 	"github.com/containers/storage"
-	"github.com/sirupsen/logrus"
 	"strings"
 )
 
-func (image FunctionImage) PushImage(imageId string) error {
+func (image FunctionImage) PushImage(systemContext *types.SystemContext, imageId string) error {
 	dest, err := image.parseSpecDest()
+
 	if err != nil {
 		return err
 	}
@@ -33,10 +33,12 @@ func (image FunctionImage) PushImage(imageId string) error {
 
 	options := buildah.PushOptions{
 		Store:         buildStore,
-		SystemContext: &types.SystemContext{},
+		SystemContext: systemContext,
 	}
 
-	_, _, err = buildah.Push(context.TODO(), imageId, dest, options)
+	st, st2, err := buildah.Push(context.TODO(), imageId, dest, options)
+
+	fmt.Printf("%+v\n%+v\n", st, st2)
 
 	return err
 }
@@ -61,7 +63,6 @@ func (image FunctionImage) parseSpecDest() (types.ImageReference, error) {
 			return dest, nil
 		}
 		dest = dest2
-		logrus.Debugf("Assuming docker:// as the transport method for DESTINATION: %s", destSpec)
 	}
 	return dest, nil
 }

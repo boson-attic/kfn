@@ -1,6 +1,9 @@
 package image
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type FunctionImage struct {
 	ImageName     string
@@ -9,5 +12,19 @@ type FunctionImage struct {
 }
 
 func (image FunctionImage) FullName() string {
-	return fmt.Sprintf("%s/%s:%s", image.ImageRegistry, image.ImageName, image.Tag)
+	if image.Tag != "" {
+		return fmt.Sprintf("%s/%s:%s", image.ImageRegistry, image.ImageName, image.Tag)
+	} else {
+		return fmt.Sprintf("%s/%s", image.ImageRegistry, image.ImageName)
+	}
+}
+
+func (image FunctionImage) FullNameForK8s() string {
+	fullName := image.FullName()
+
+	if strings.HasPrefix(fullName, "docker://") {
+		return fullName[len("docker://"):]
+	}
+
+	return fullName
 }

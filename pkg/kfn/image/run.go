@@ -28,7 +28,7 @@ func (image FunctionImage) constructService(name string, namespace string) servi
 		Spec: serving_v1alpha1_api.RevisionSpec{},
 	}
 	service.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image: image.FullName(),
+		Image: image.FullNameForK8s(),
 	}}
 
 	return service

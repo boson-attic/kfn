@@ -2,7 +2,6 @@ package image
 
 import (
 	"context"
-	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/containers/image/transports"
@@ -20,13 +19,11 @@ func (image FunctionImage) PushImage(systemContext *types.SystemContext, imageId
 	}
 
 	buildStoreOptions, err := storage.DefaultStoreOptions(unshare.IsRootless(), unshare.GetRootlessUID())
-
 	if err != nil {
 		return err
 	}
 
 	buildStore, err := storage.GetStore(buildStoreOptions)
-
 	if err != nil {
 		return err
 	}
@@ -36,15 +33,13 @@ func (image FunctionImage) PushImage(systemContext *types.SystemContext, imageId
 		SystemContext: systemContext,
 	}
 
-	st, st2, err := buildah.Push(context.TODO(), imageId, dest, options)
-
-	fmt.Printf("%+v\n%+v\n", st, st2)
+	_, _, err = buildah.Push(context.TODO(), imageId, dest, options)
 
 	return err
 }
 
 func (image FunctionImage) parseSpecDest() (types.ImageReference, error) {
-	destSpec := fmt.Sprintf("%s/%s:%s", image.ImageRegistry, image.ImageName, image.Tag)
+	destSpec := image.FullName()
 	dest, err := alltransports.ParseImageName(destSpec)
 	// add the docker:// transport to see if they neglected it.
 	if err != nil {

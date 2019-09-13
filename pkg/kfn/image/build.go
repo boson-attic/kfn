@@ -51,6 +51,7 @@ func (image FunctionImage) BuildImage(ctx *types.SystemContext, targetDir string
 		CommonBuildOpts:  buildOpts,
 		ConfigureNetwork: buildah.NetworkDefault,
 		SystemContext:    ctx,
+		Format:           buildah.Dockerv2ImageManifest,
 	}
 
 	builder, err := buildah.NewBuilder(context.TODO(), buildStore, opts)
@@ -96,7 +97,9 @@ func (image FunctionImage) BuildImage(ctx *types.SystemContext, targetDir string
 
 	imageRef, err := alltransports.ParseImageName(image.ImageName)
 
-	imageId, _, _, err := builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{})
+	imageId, _, _, err := builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{
+		PreferredManifestType: buildah.Dockerv2ImageManifest,
+	})
 
 	return imageId, err
 }

@@ -57,7 +57,7 @@ func init() {
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	runCmd.Flags().StringVarP(&imageName, "imageName", "i", "", "Image name")
-	runCmd.Flags().StringVarP(&imageTag, "imageTag", "t", "latest", "Image tag")
+	runCmd.Flags().StringVarP(&imageTag, "imageTag", "t", "", "Image tag")
 	runCmd.Flags().StringVarP(&serviceName, "serviceName", "s", "", "KNative service name")
 }
 
@@ -156,7 +156,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
 
-	logf("KNative service deployed")
+	logf("Knative service deployed")
 
 }
 

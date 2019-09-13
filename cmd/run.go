@@ -1,5 +1,5 @@
 /*
-Copyright © 2019 NAME HERE <EMAIL ADDRESS>
+Copyright © Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/containers/buildah/pkg/parse"
 	"github.com/slinkydeveloper/kfn/pkg/kfn"
 	"github.com/slinkydeveloper/kfn/pkg/kfn/image"
@@ -25,9 +29,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
-	"os"
-	"path"
-	"strings"
 )
 
 var imageName string

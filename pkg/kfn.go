@@ -1,14 +1,14 @@
-package kfn
+package pkg
 
 import (
 	"fmt"
-	"github.com/slinkydeveloper/kfn/pkg/kfn/util"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 	"os"
 	"path"
 	"strings"
 )
 
-const targetDirectoryBaseName = "target"
+const targetDirectoryBaseName = "target" //TODO use constant.go
 const runtimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-js-runtime-image/archive/master.zip"
 
 var TargetDirectory string

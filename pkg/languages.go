@@ -1,4 +1,4 @@
-package kfn
+package pkg
 
 type Language uint8
 

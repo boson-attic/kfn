@@ -1,7 +1,7 @@
-package kfn
+package pkg
 
 import (
-	"github.com/slinkydeveloper/kfn/pkg/kfn/js"
+	"github.com/slinkydeveloper/kfn/pkg/js"
 )
 
 type Bootstrapper interface {

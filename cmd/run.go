@@ -22,8 +22,8 @@ import (
 	"strings"
 
 	"github.com/containers/buildah/pkg/parse"
-	"github.com/slinkydeveloper/kfn/pkg/kfn"
-	"github.com/slinkydeveloper/kfn/pkg/kfn/image"
+	"github.com/slinkydeveloper/kfn/pkg"
+	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/rest"
@@ -75,7 +75,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	logf("Loading function %v", function_path)
 
-	err := kfn.LoadFunction(function_path)
+	err := pkg.LoadFunction(function_path)
 
 	if err != nil {
 		panic(fmt.Sprintf("Error while loading the function: %v", err))
@@ -85,7 +85,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	logf("Loading runtime")
 
-	err = kfn.DownloadRuntimeAndCopyRequiredFiles()
+	err = pkg.DownloadRuntimeAndCopyRequiredFiles()
 
 	if err != nil {
 		panic(fmt.Sprintf("Error while loading the runtime: %v", err))
@@ -115,7 +115,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 
 	logf("Building image")
 
-	imageId, err := functionImage.BuildImage(ctx, kfn.TargetDirectory)
+	imageId, err := functionImage.BuildImage(ctx, pkg.TargetDirectory)
 
 	if err != nil {
 		panic(fmt.Sprintf("Error while building the image: %v", err))

@@ -2,7 +2,7 @@ package js
 
 import (
 	"fmt"
-	"github.com/slinkydeveloper/kfn/pkg/kfn/util"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 	"path"
 )
 

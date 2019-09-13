@@ -21,6 +21,7 @@ import (
 
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/mitchellh/go-homedir"
+	"github.com/slinkydeveloper/kfn/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,6 +37,7 @@ var rootCmd = &cobra.Command{
 	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
+		pkg.InitVariables()
 	},
 }
 
@@ -87,8 +89,5 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	_ = viper.ReadInConfig()
 }

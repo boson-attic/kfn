@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (image FunctionImage) PushImage(systemContext *types.SystemContext, imageId string) error {
+func (image FunctionImage) PushImage(systemContext *types.SystemContext) error {
 	dest, err := image.parseSpecDest()
 
 	if err != nil {
@@ -33,7 +33,7 @@ func (image FunctionImage) PushImage(systemContext *types.SystemContext, imageId
 		SystemContext: systemContext,
 	}
 
-	_, _, err = buildah.Push(context.TODO(), imageId, dest, options)
+	_, _, err = buildah.Push(context.TODO(), image.ImageId, dest, options)
 
 	return err
 }

@@ -45,7 +45,7 @@ func newInitCmdFn(language pkg.Language) func(cmd *cobra.Command, args []string)
 	return func(cmd *cobra.Command, args []string) error {
 		functionName, directory := resolveFunctionAndDir(args)
 
-		bootstrapper := pkg.ResolveBootrapper(pkg.Javascript)
+		bootstrapper := pkg.ResolveBootstrapper(language)
 
 		return (*bootstrapper).Bootstrap(functionName, directory)
 	}

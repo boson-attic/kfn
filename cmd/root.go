@@ -17,17 +17,16 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/mitchellh/go-homedir"
 	"github.com/slinkydeveloper/kfn/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
+	"strings"
 )
 
 var cfgFile string
-var Verbose bool
 var k8sNamespace string
 
 // rootCmd represents the base command when called without any subcommands
@@ -54,18 +53,22 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml")
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
-	rootCmd.PersistentFlags().String("registry", "", "Docker registry where to push the image")
-	viper.BindPFlag("registry", rootCmd.PersistentFlags().Lookup("registry"))
-	rootCmd.PersistentFlags().String("registry-username", "", "Username to access docker registry")
-	viper.BindPFlag("registry_username", rootCmd.PersistentFlags().Lookup("registry-username"))
-	rootCmd.PersistentFlags().String("registry-password", "", "Password to access docker registry")
-	viper.BindPFlag("registry_password", rootCmd.PersistentFlags().Lookup("registry-password"))
 
-	rootCmd.PersistentFlags().String("kubeconfig", "", "kubeconfig")
-	viper.BindPFlag("kubeconfig", rootCmd.PersistentFlags().Lookup("kubeconfig"))
+	rootCmd.PersistentFlags().BoolP(pkg.VERBOSE, "v", false, "verbose output")
+	viper.BindPFlag(pkg.VERBOSE, rootCmd.PersistentFlags().Lookup(pkg.VERBOSE))
+
+	stringFlagWithBind(pkg.REGISTRY, "", "Docker registry where to push the image")
+	stringFlagWithBind(pkg.REGISTRY_USERNAME, "", "Username to access docker registry")
+	stringFlagWithBind(pkg.REGISTRY_PASSWORD, "", "Password to access docker registry")
+	stringFlagWithBind(pkg.KUBECONFIG, "", "kubeconfig")
 
 	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
+}
+
+func stringFlagWithBind(envName, defaultValue, usage string) {
+	flagName := strings.ReplaceAll(envName, "_", "-")
+	rootCmd.PersistentFlags().String(flagName, defaultValue, usage)
+	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
 }
 
 // initConfig reads in config file and ENV variables if set.

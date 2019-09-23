@@ -2,20 +2,21 @@ package image
 
 import (
 	"fmt"
+	"github.com/slinkydeveloper/kfn/pkg"
 	"strings"
 )
 
 type FunctionImage struct {
-	ImageName     string
-	ImageRegistry string
-	Tag           string
+	ImageId   string
+	ImageName string
+	Tag       string
 }
 
 func (image FunctionImage) FullName() string {
 	if image.Tag != "" {
-		return fmt.Sprintf("%s/%s:%s", image.ImageRegistry, image.ImageName, image.Tag)
+		return fmt.Sprintf("%s/%s:%s", pkg.ImageRegistry, image.ImageName, image.Tag)
 	} else {
-		return fmt.Sprintf("%s/%s", image.ImageRegistry, image.ImageName)
+		return fmt.Sprintf("%s/%s", pkg.ImageRegistry, image.ImageName)
 	}
 }
 

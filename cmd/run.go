@@ -22,10 +22,9 @@ import (
 	"strings"
 
 	"github.com/containers/buildah/pkg/parse"
+	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg"
-	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
@@ -63,38 +62,18 @@ func init() {
 }
 
 func runCmdFn(cmd *cobra.Command, args []string) {
-	dockerRegistry := viper.GetString("registry")
-	kubeconfig := viper.GetString("kubeconfig")
+	log.Infof("Using Kubeconfig: %v\n", pkg.Kubeconfig)
+	log.Infof("Using Docker registry: %v\n", pkg.ImageRegistry)
 
-	if Verbose {
-		fmt.Printf("Using Kubeconfig: %v\n", kubeconfig)
-		fmt.Printf("Using Docker registry: %v\n", dockerRegistry)
+	functionPath := args[0]
+
+	language := pkg.GetLanguageFromExtension(path.Ext(functionPath))
+	if language == pkg.Unknown {
+		panic(fmt.Sprintf("Unknown language for function %s", functionPath))
 	}
-
-	function_path := args[0]
-
-	logf("Loading function %v", function_path)
-
-	err := pkg.LoadFunction(function_path)
-
-	if err != nil {
-		panic(fmt.Sprintf("Error while loading the function: %v", err))
-	}
-
-	logf("Function loaded")
-
-	logf("Loading runtime")
-
-	err = pkg.DownloadRuntimeAndCopyRequiredFiles()
-
-	if err != nil {
-		panic(fmt.Sprintf("Error while loading the runtime: %v", err))
-	}
-
-	logf("Runtime loaded")
 
 	if len(imageName) == 0 {
-		base := path.Base(function_path)
+		base := path.Base(functionPath)
 		imageName = strings.TrimSuffix(base, path.Ext(base))
 	}
 
@@ -102,41 +81,29 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		serviceName = imageName
 	}
 
-	functionImage := image.FunctionImage{
-		ImageName:     imageName,
-		ImageRegistry: dockerRegistry,
-		Tag:           imageTag,
-	}
-
 	ctx, err := parse.SystemContextFromOptions(cmd)
 	if err != nil {
 		panic(fmt.Sprintf("Error while trying to infer context: %v", err))
 	}
 
-	logf("Building image")
-
-	imageId, err := functionImage.BuildImage(ctx, pkg.TargetDirectory)
-
+	functionImage, err := pkg.Build(functionPath, language, imageName, imageTag, ctx)
 	if err != nil {
 		panic(fmt.Sprintf("Error while building the image: %v", err))
 	}
 
-	logf("Image built: %v", imageId)
-
-	err = functionImage.PushImage(ctx, imageId)
-
+	err = functionImage.PushImage(ctx)
 	if err != nil {
 		panic(fmt.Sprintf("Error while pushing the image: %v", err))
 	}
 
-	logf("Image pushed")
+	log.Infof("Image %+v pushed", functionImage)
 
 	var config *rest.Config
 	if os.Getenv("KFN_IN_CLUSTER") == "true" {
 		config, err = rest.InClusterConfig()
 	} else {
-		if kubeconfig != "" {
-			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if pkg.Kubeconfig != "" {
+			config, err = clientcmd.BuildConfigFromFlags("", pkg.Kubeconfig)
 		} else {
 			config, err = clientcmd.BuildConfigFromKubeconfigGetter("", clientcmd.NewDefaultClientConfigLoadingRules().Load)
 		}
@@ -157,12 +124,5 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
 
-	logf("Knative service deployed")
-
-}
-
-func logf(format string, values ...interface{}) {
-	if Verbose {
-		fmt.Printf(format+"\n", values...)
-	}
+	log.Infof("Service %s deployed", serviceName)
 }

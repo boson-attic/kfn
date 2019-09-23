@@ -12,12 +12,17 @@ import (
 	"text/template"
 )
 
-func FsExist(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+func FsExist(p ...string) bool {
+	if _, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
 		return false
 	} else {
 		return true
 	}
+}
+
+func CommandExists(cmd string) bool {
+	_, err := exec.LookPath(cmd)
+	return err == nil
 }
 
 func MkdirpIfNotExists(path string) error {

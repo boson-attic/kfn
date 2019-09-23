@@ -2,89 +2,100 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/containers/image/types"
+	log "github.com/sirupsen/logrus"
+	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/util"
-	"os"
-	"path"
+	"io/ioutil"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"strings"
+	"time"
 )
 
-const targetDirectoryBaseName = "target" //TODO use constant.go
-const runtimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-js-runtime-image/archive/master.zip"
-
-var TargetDirectory string
-var UsrDirectory string
-
 func init() {
-	// Init target directory
-	pwd, err := os.Getwd()
-
-	if err != nil {
-		panic(fmt.Sprintf("Error while retrieving pwd: %v", err))
-	}
-
-	TargetDirectory = path.Join(pwd, targetDirectoryBaseName)
-	UsrDirectory = path.Join(TargetDirectory, "usr")
+	rand.Seed(time.Now().UnixNano())
 }
 
-func LoadFunction(location string) error {
-	if err := initializeTargetDir(); err != nil {
-		return err
+// Build function handles the different build steps:
+// 1. Create target dir and runtime dir if not existing
+// 2. Resolve the runtime manager
+// 3. Download required runtime files if needed
+// 4. Resolve the compiler manager
+// 5. Check if compile dependencies are available (compiler, libraries, etc)
+// 6. Download on the local filesystem the function if remote
+// 7. Run compilation and output the files to move on the image
+// 8. Resolve image builder
+// 9. Build image and return the image id
+func Build(location string, language Language, imageName string, imageTag string, systemContext *types.SystemContext) (image.FunctionImage, error) {
+	err := util.MkdirpIfNotExists(TargetDir)
+	if err != nil {
+		return "", err
 	}
 
-	if err := initializeUsrDir(); err != nil {
-		return err
+	err = util.MkdirpIfNotExists(RuntimeDir)
+	if err != nil {
+		return "", err
+	}
+
+	runtimeManager := ResolveRuntimeManager(language)
+
+	err = (*runtimeManager).DownloadRuntimeIfRequired()
+	if err != nil {
+		return "", err
+	}
+
+	compilerManager := ResolveCompilerManager(language)
+
+	log.Info("Checking compile dependencies")
+
+	err = (*compilerManager).CheckCompileDependencies()
+	if err != nil {
+		return "", err
 	}
 
 	if strings.HasPrefix(location, "http") {
-		return downloadFunctionFromHTTP(location)
-	} else {
-		return loadFunctionFileFromLocal(location)
+		log.Infof("Downloading function from %s", location)
+
+		location, err = downloadFunctionFromHTTP(location, getExtension(language))
+		if err != nil {
+			return "", err
+		}
 	}
+
+	log.Info("Compiling")
+
+	main, additionalFiles, err := (*compilerManager).Compile(location)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Configuring target directory")
+
+	err = (*runtimeManager).ConfigureTargetDirectory(main, additionalFiles)
+	if err != nil {
+		return "", err
+	}
+
+	log.Info("Starting build image")
+
+	imageBuilder := ResolveImageBuilder(language)
+	return (*imageBuilder).BuildImage(systemContext, image.FunctionImage{ImageName: imageName, Tag: imageTag})
 }
 
-func DownloadRuntimeAndCopyRequiredFiles() error {
-	if util.FsExist(path.Join(TargetDirectory, "src")) {
-		// We reuse stuff already in target dir
-		return nil
+func downloadFunctionFromHTTP(remote, extension string) (string, error) {
+	f, err := ioutil.TempFile("", fmt.Sprintf("*.%d", extension))
+	if err != nil {
+		return "", err
 	}
 
-	runtimeZip := path.Join(TargetDirectory, "master.zip")
-
-	if err := util.DownloadFile(runtimeRemoteZip, runtimeZip); err != nil {
-		return err
+	err = util.DownloadAndPipe(remote, f)
+	if err != nil {
+		return "", err
+	}
+	err = f.Close()
+	if err != nil {
+		return "", err
 	}
 
-	if _, err := util.Unzip(runtimeZip, TargetDirectory); err != nil {
-		return err
-	}
-
-	srcDir := path.Join(TargetDirectory, "src")
-
-	if err := util.Copy(path.Join(TargetDirectory, "faas-js-runtime-image-master", "src"), srcDir); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func initializeTargetDir() error {
-	if !util.FsExist(TargetDirectory) {
-		return os.Mkdir(TargetDirectory, os.ModePerm)
-	}
-	return nil
-}
-
-func initializeUsrDir() error {
-	if !util.FsExist(UsrDirectory) {
-		return os.Mkdir(UsrDirectory, os.ModePerm)
-	}
-	return nil
-}
-
-func downloadFunctionFromHTTP(remote string) error {
-	return util.DownloadFile(remote, path.Join(TargetDirectory, "usr", "fn.js"))
-}
-
-func loadFunctionFileFromLocal(filepath string) error {
-	return util.Copy(filepath, path.Join(TargetDirectory, "usr", "index.js"))
+	return f.Name(), nil
 }

@@ -2,19 +2,20 @@ package js
 
 import (
 	"fmt"
+	"github.com/slinkydeveloper/kfn/pkg"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"path"
 )
 
-type JsBoostrapper struct {
+type jsBoostrapper struct {
 	resourceLoader util.ResourceLoader
 }
 
-func NewJsBootstrapper() JsBoostrapper {
-	return JsBoostrapper{resourceLoader: util.NewResourceLoader("../../../bootstrap_templates/js")}
+func NewJSBootstrapper() pkg.Bootstrapper {
+	return jsBoostrapper{resourceLoader: util.NewResourceLoader("../../../bootstrap_templates/js")}
 }
 
-func (r JsBoostrapper) Bootstrap(functionName string, targetDirectory string) error {
+func (r jsBoostrapper) Bootstrap(functionName string, targetDirectory string) error {
 	err := util.MkdirpIfNotExists(targetDirectory)
 	if err != nil {
 		return err

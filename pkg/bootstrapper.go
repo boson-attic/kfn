@@ -9,10 +9,10 @@ type Bootstrapper interface {
 }
 
 var (
-	jsBootstrapper Bootstrapper = js.NewJsBootstrapper()
+	jsBootstrapper Bootstrapper = js.NewJSBootstrapper()
 )
 
-func ResolveBootrapper(language Language) *Bootstrapper {
+func ResolveBootstrapper(language Language) *Bootstrapper {
 	switch language {
 	case Javascript:
 		return &jsBootstrapper

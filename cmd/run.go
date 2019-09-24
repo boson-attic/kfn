@@ -17,17 +17,21 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"strings"
-
 	"github.com/containers/buildah/pkg/parse"
+	"github.com/containers/image/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg"
+	"github.com/slinkydeveloper/kfn/pkg/config"
+	"github.com/slinkydeveloper/kfn/pkg/languages"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 var imageName string
@@ -62,13 +66,21 @@ func init() {
 }
 
 func runCmdFn(cmd *cobra.Command, args []string) {
-	log.Infof("Using Kubeconfig: %v\n", pkg.Kubeconfig)
-	log.Infof("Using Docker registry: %v\n", pkg.ImageRegistry)
+	if err := util.RmR(config.TargetDir); err != nil {
+		panic(err)
+	}
+
+	log.Infof("Using Kubeconfig: %v\n", config.Kubeconfig)
+	log.Infof("Using Docker registry: %v\n", config.ImageRegistry)
 
 	functionPath := args[0]
+	functionPath, err := filepath.Abs(functionPath)
+	if err != nil {
+		panic(err)
+	}
 
-	language := pkg.GetLanguageFromExtension(path.Ext(functionPath))
-	if language == pkg.Unknown {
+	language := languages.GetLanguage(path.Ext(functionPath))
+	if language == languages.Unknown {
 		panic(fmt.Sprintf("Unknown language for function %s", functionPath))
 	}
 
@@ -81,7 +93,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		serviceName = imageName
 	}
 
-	ctx, err := parse.SystemContextFromOptions(cmd)
+	ctx, err := parseSystemContext(cmd)
 	if err != nil {
 		panic(fmt.Sprintf("Error while trying to infer context: %v", err))
 	}
@@ -91,21 +103,16 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Error while building the image: %v", err))
 	}
 
-	err = functionImage.PushImage(ctx)
-	if err != nil {
-		panic(fmt.Sprintf("Error while pushing the image: %v", err))
-	}
-
 	log.Infof("Image %+v pushed", functionImage)
 
-	var config *rest.Config
+	var kconfig *rest.Config
 	if os.Getenv("KFN_IN_CLUSTER") == "true" {
-		config, err = rest.InClusterConfig()
+		kconfig, err = rest.InClusterConfig()
 	} else {
-		if pkg.Kubeconfig != "" {
-			config, err = clientcmd.BuildConfigFromFlags("", pkg.Kubeconfig)
+		if config.Kubeconfig != "" {
+			kconfig, err = clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
 		} else {
-			config, err = clientcmd.BuildConfigFromKubeconfigGetter("", clientcmd.NewDefaultClientConfigLoadingRules().Load)
+			kconfig, err = clientcmd.BuildConfigFromKubeconfigGetter("", clientcmd.NewDefaultClientConfigLoadingRules().Load)
 		}
 	}
 	if err != nil {
@@ -113,7 +120,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 	}
 
 	// create the clientset for k8s
-	servingClient, err := serving.NewForConfig(config)
+	servingClient, err := serving.NewForConfig(kconfig)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
@@ -125,4 +132,24 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 	}
 
 	log.Infof("Service %s deployed", serviceName)
+}
+
+func parseSystemContext(cmd *cobra.Command) (*types.SystemContext, error) {
+	ctx, err := parse.SystemContextFromOptions(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if config.ImageRegistryUsername != "" {
+		ctx.DockerAuthConfig = &types.DockerAuthConfig{
+			Username: config.ImageRegistryUsername,
+			Password: config.ImageRegistryPassword,
+		}
+	}
+
+	ctx.DockerInsecureSkipTLSVerify = types.NewOptionalBool(!config.ImageRegistryTLSVerify)
+	ctx.OCIInsecureSkipTLSVerify = !config.ImageRegistryTLSVerify
+	ctx.DockerDaemonInsecureSkipTLSVerify = !config.ImageRegistryTLSVerify
+
+	return ctx, nil
 }

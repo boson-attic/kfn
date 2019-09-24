@@ -16,7 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"github.com/slinkydeveloper/kfn/pkg"
+	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
 )
@@ -26,12 +26,12 @@ var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Clean runtime & target directory",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := util.RmR(pkg.TargetDir)
+		err := util.RmR(config.TargetDir)
 		if err != nil {
 			return err
 		}
 
-		return util.RmR(pkg.RuntimeDir)
+		return util.RmR(config.RuntimeDir)
 	},
 }
 

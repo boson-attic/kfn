@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/containers/image/types"
 	log "github.com/sirupsen/logrus"
+	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
+	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -26,60 +28,57 @@ func init() {
 // 7. Run compilation and output the files to move on the image
 // 8. Resolve image builder
 // 9. Build image and return the image id
-func Build(location string, language Language, imageName string, imageTag string, systemContext *types.SystemContext) (image.FunctionImage, error) {
-	err := util.MkdirpIfNotExists(TargetDir)
+func Build(location string, language languages.Language, imageName string, imageTag string, systemContext *types.SystemContext) (image.FunctionImage, error) {
+	err := util.MkdirpIfNotExists(config.TargetDir)
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
 
-	err = util.MkdirpIfNotExists(RuntimeDir)
+	err = util.MkdirpIfNotExists(config.RuntimeDir)
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
 
-	runtimeManager := ResolveRuntimeManager(language)
+	languageManager := languages.ResolveLanguageManager(language)
 
-	err = (*runtimeManager).DownloadRuntimeIfRequired()
+	err = languageManager.DownloadRuntimeIfRequired()
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
-
-	compilerManager := ResolveCompilerManager(language)
 
 	log.Info("Checking compile dependencies")
 
-	err = (*compilerManager).CheckCompileDependencies()
+	err = languageManager.CheckCompileDependencies()
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
 
 	if strings.HasPrefix(location, "http") {
 		log.Infof("Downloading function from %s", location)
 
-		location, err = downloadFunctionFromHTTP(location, getExtension(language))
+		location, err = downloadFunctionFromHTTP(location, languages.GetExtension(language))
 		if err != nil {
-			return "", err
+			return image.FunctionImage{}, err
 		}
 	}
 
 	log.Info("Compiling")
 
-	main, additionalFiles, err := (*compilerManager).Compile(location)
+	main, additionalFiles, err := languageManager.Compile(location)
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
 
 	log.Info("Configuring target directory")
 
-	err = (*runtimeManager).ConfigureTargetDirectory(main, additionalFiles)
+	err = languageManager.ConfigureTargetDirectory(main, additionalFiles, false)
 	if err != nil {
-		return "", err
+		return image.FunctionImage{}, err
 	}
 
 	log.Info("Starting build image")
 
-	imageBuilder := ResolveImageBuilder(language)
-	return (*imageBuilder).BuildImage(systemContext, image.FunctionImage{ImageName: imageName, Tag: imageTag})
+	return languageManager.BuildImage(systemContext, imageName, imageTag)
 }
 
 func downloadFunctionFromHTTP(remote, extension string) (string, error) {

@@ -139,6 +139,19 @@ func Copy(source string, dest string) error {
 	return nil
 }
 
+func CopyContent(source string, dest string) error {
+	if !FsExist(source) {
+		return fmt.Errorf("Cannot find %s", source)
+	}
+
+	cmd := exec.Command("cp", "-r", path.Join(source, "."), dest)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func RmR(path string) error {
 	if !FsExist(path) {
 		return nil

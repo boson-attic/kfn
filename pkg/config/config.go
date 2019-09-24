@@ -1,22 +1,22 @@
-package pkg
+package config
 
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"io"
 	"os"
 	"path"
 )
 
 const (
-	TARGET_DIR_ENV    = "target_dir"
-	RUNTIME_DIR_ENV   = "runtime_dir"
-	VERBOSE           = "verbose"
-	REGISTRY          = "registry"
-	REGISTRY_USERNAME = "registry_username"
-	REGISTRY_PASSWORD = "registry_password"
-	KUBECONFIG        = "kubeconfig"
+	TARGET_DIR_ENV      = "target_dir"
+	RUNTIME_DIR_ENV     = "runtime_dir"
+	VERBOSE             = "verbose"
+	REGISTRY            = "registry"
+	REGISTRY_USERNAME   = "registry_username"
+	REGISTRY_PASSWORD   = "registry_password"
+	REGISTRY_TLS_VERIFY = "registry_tls_verify"
+	KUBECONFIG          = "kubeconfig"
 )
 
 const (
@@ -25,13 +25,14 @@ const (
 )
 
 var (
-	TargetDir             string
-	RuntimeDir            string
-	Verbose               bool
-	ImageRegistry         string
-	ImageRegistryUsername string
-	ImageRegistryPassword string
-	Kubeconfig            string
+	TargetDir              string
+	RuntimeDir             string
+	Verbose                bool
+	ImageRegistry          string
+	ImageRegistryUsername  string
+	ImageRegistryPassword  string
+	ImageRegistryTLSVerify bool
+	Kubeconfig             string
 )
 
 func InitVariables() {
@@ -44,6 +45,7 @@ func InitVariables() {
 	ImageRegistry = getEnvOrFail(REGISTRY)
 	ImageRegistryUsername = getEnvOrDefault(REGISTRY_USERNAME, "")
 	ImageRegistryPassword = getEnvOrDefault(REGISTRY_PASSWORD, "")
+	ImageRegistryTLSVerify = getEnvBoolOrDefault(REGISTRY_TLS_VERIFY, true)
 	Kubeconfig = getEnvOrDefault(KUBECONFIG, "")
 
 	// Configure logging
@@ -52,16 +54,6 @@ func InitVariables() {
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
-}
-
-func GetLoggerWriter() *io.PipeWriter {
-	logger := log.New()
-	if Verbose {
-		logger.SetLevel(log.InfoLevel)
-	} else {
-		logger.SetLevel(log.WarnLevel)
-	}
-	return logger.Writer()
 }
 
 func getEnvOrFail(envName string) string {

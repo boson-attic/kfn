@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/mitchellh/go-homedir"
-	"github.com/slinkydeveloper/kfn/pkg"
+	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -36,7 +36,7 @@ var rootCmd = &cobra.Command{
 	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
-		pkg.InitVariables()
+		config.InitVariables()
 	},
 }
 
@@ -54,13 +54,14 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml")
 
-	rootCmd.PersistentFlags().BoolP(pkg.VERBOSE, "v", false, "verbose output")
-	viper.BindPFlag(pkg.VERBOSE, rootCmd.PersistentFlags().Lookup(pkg.VERBOSE))
+	rootCmd.PersistentFlags().BoolP(config.VERBOSE, "v", false, "verbose output")
+	viper.BindPFlag(config.VERBOSE, rootCmd.PersistentFlags().Lookup(config.VERBOSE))
 
-	stringFlagWithBind(pkg.REGISTRY, "", "Docker registry where to push the image")
-	stringFlagWithBind(pkg.REGISTRY_USERNAME, "", "Username to access docker registry")
-	stringFlagWithBind(pkg.REGISTRY_PASSWORD, "", "Password to access docker registry")
-	stringFlagWithBind(pkg.KUBECONFIG, "", "kubeconfig")
+	stringFlagWithBind(config.REGISTRY, "", "Docker registry where to push the image")
+	stringFlagWithBind(config.REGISTRY_USERNAME, "", "Username to access docker registry")
+	stringFlagWithBind(config.REGISTRY_PASSWORD, "", "Password to access docker registry")
+	stringFlagWithBind(config.KUBECONFIG, "", "Kubeconfig")
+	boolFlagWithBind(config.REGISTRY_TLS_VERIFY, true, "TLS Verify when accessing the docker registry")
 
 	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
 }
@@ -68,6 +69,12 @@ func init() {
 func stringFlagWithBind(envName, defaultValue, usage string) {
 	flagName := strings.ReplaceAll(envName, "_", "-")
 	rootCmd.PersistentFlags().String(flagName, defaultValue, usage)
+	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
+}
+
+func boolFlagWithBind(envName string, defaultValue bool, usage string) {
+	flagName := strings.ReplaceAll(envName, "_", "-")
+	rootCmd.PersistentFlags().Bool(flagName, defaultValue, usage)
 	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
 }
 

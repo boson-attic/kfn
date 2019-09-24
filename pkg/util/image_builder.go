@@ -1,30 +1,19 @@
-package pkg
+package util
 
 import (
 	"context"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/unshare"
-	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
 	"github.com/containers/storage"
 	"github.com/opencontainers/go-digest"
+	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"os"
 	"strings"
 )
 
 var digester = digest.Canonical.Digester()
-
-type ImageBuilder interface {
-	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string) (image.FunctionImage, error)
-}
-
-func ResolveImageBuilder(language Language) *ImageBuilder {
-	switch language {
-	default:
-		return nil
-	}
-}
 
 func InitializeBuilder(ctx context.Context, systemContext *types.SystemContext, fromImage string) (*buildah.Builder, error) {
 	buildStoreOptions, err := storage.DefaultStoreOptions(unshare.IsRootless(), unshare.GetRootlessUID())
@@ -85,8 +74,7 @@ type BuildCommand struct {
 }
 
 func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
-	logger := GetLoggerWriter()
-	defer logger.Close()
+	logger := config.GetLoggerWriter()
 	for _, cmd := range commands {
 		command := strings.Split(cmd.Command, " ")
 
@@ -106,18 +94,20 @@ func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
 }
 
 func CommitImage(builder *buildah.Builder, imageName string, imageTag string) (image.FunctionImage, error) {
-	imageRef, err := alltransports.ParseImageName(imageName)
+	img := image.FunctionImage{
+		ImageName: imageName,
+		Tag:       imageTag,
+	}
+
+	imageRef, err := img.ParseSpecDest()
+
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
-	imageId, _, _, err := builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{
+	_, _, _, err = builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{
 		PreferredManifestType: buildah.Dockerv2ImageManifest,
 	})
 
-	return image.FunctionImage{
-		ImageId:   imageId,
-		ImageName: imageName,
-		Tag:       imageTag,
-	}, err
+	return img, err
 }

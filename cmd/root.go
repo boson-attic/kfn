@@ -51,7 +51,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
 
 	rootCmd.PersistentFlags().BoolP(config.VERBOSE, "v", false, "verbose output")
 	viper.BindPFlag(config.VERBOSE, rootCmd.PersistentFlags().Lookup(config.VERBOSE))

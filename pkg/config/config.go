@@ -58,6 +58,15 @@ func InitVariables() {
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
+
+	var err error
+	ImageRegistry, ImageRegistryUsername, ImageRegistryPassword, err = inferImageRegistry()
+	if err != nil {
+		panic(err)
+	}
+
+	log.Infof("Using Kubeconfig: %s", Kubeconfig)
+	log.Infof("Using image registry: %s", ImageRegistry)
 }
 
 func GetBuildahIsolation() buildah.Isolation {

@@ -82,6 +82,10 @@ func Build(location string, language languages.Language, imageName string, image
 
 	log.Info("Starting build image")
 
+	//TODO remove
+	log.Infof("System context: %+v", systemContext)
+	log.Infof("Docker auth config: %+v", systemContext.DockerAuthConfig)
+
 	return languageManager.BuildImage(systemContext, imageName, imageTag)
 }
 

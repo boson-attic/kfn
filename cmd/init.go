@@ -28,7 +28,7 @@ var InitCmd = &cobra.Command{
 }
 
 func init() {
-	InitCmd.AddCommand(newInitCmd("js", "Javascript", languages.Javascript))
+	InitCmd.AddCommand(newInitCmd("js", "JavaScript", languages.JavaScript))
 	rootCmd.AddCommand(InitCmd)
 }
 

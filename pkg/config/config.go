@@ -39,14 +39,14 @@ func InitVariables() {
 	wd, _ := os.Getwd()
 
 	// Configure variables
-	TargetDir = path.Join(wd, getEnvOrDefault(TARGET_DIR_ENV, targetDirBase))
-	RuntimeDir = path.Join(wd, getEnvOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
+	TargetDir = path.Join(wd, getEnvStringOrDefault(TARGET_DIR_ENV, targetDirBase))
+	RuntimeDir = path.Join(wd, getEnvStringOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
 	Verbose = getEnvBoolOrDefault(VERBOSE, false)
 	ImageRegistry = getEnvOrFail(REGISTRY)
-	ImageRegistryUsername = getEnvOrDefault(REGISTRY_USERNAME, "")
-	ImageRegistryPassword = getEnvOrDefault(REGISTRY_PASSWORD, "")
+	ImageRegistryUsername = getEnvStringOrDefault(REGISTRY_USERNAME, "")
+	ImageRegistryPassword = getEnvStringOrDefault(REGISTRY_PASSWORD, "")
 	ImageRegistryTLSVerify = getEnvBoolOrDefault(REGISTRY_TLS_VERIFY, true)
-	Kubeconfig = getEnvOrDefault(KUBECONFIG, "")
+	Kubeconfig = getEnvStringOrDefault(KUBECONFIG, "")
 
 	// Configure logging
 	if Verbose {
@@ -64,7 +64,7 @@ func getEnvOrFail(envName string) string {
 	}
 }
 
-func getEnvOrDefault(envName string, defaultValue string) string {
+func getEnvStringOrDefault(envName string, defaultValue string) string {
 	if viper.IsSet(envName) {
 		return viper.GetString(envName)
 	} else {

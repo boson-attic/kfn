@@ -28,7 +28,7 @@ var InitCmd = &cobra.Command{
 }
 
 func init() {
-	InitCmd.AddCommand(newInitCmd("js", "JavaScript", languages.JavaScript))
+	InitCmd.AddCommand(newInitCmd("js", "Javascript", languages.Javascript))
 	rootCmd.AddCommand(InitCmd)
 }
 
@@ -43,9 +43,7 @@ func newInitCmd(languageCmdName string, languageLongName string, language langua
 
 func newInitCmdFn(language languages.Language) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		functionName, directory := resolveFunctionAndDir(args)
-
-		return language.Bootstrap(functionName, directory)
+		return language.Bootstrap(resolveFunctionAndDir(args))
 	}
 }
 

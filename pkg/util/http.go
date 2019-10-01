@@ -25,3 +25,16 @@ func DownloadFile(url string, filepath string) error {
 	_, err = io.Copy(out, resp.Body)
 	return err
 }
+
+func DownloadAndPipe(url string, writer io.Writer) error {
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Write the body to file
+	_, err = io.Copy(writer, resp.Body)
+	return err
+}

@@ -12,12 +12,17 @@ import (
 	"text/template"
 )
 
-func FsExist(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+func FsExist(p ...string) bool {
+	if _, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
 		return false
 	} else {
 		return true
 	}
+}
+
+func CommandExists(cmd string) bool {
+	_, err := exec.LookPath(cmd)
+	return err == nil
 }
 
 func MkdirpIfNotExists(path string) error {
@@ -28,7 +33,6 @@ func MkdirpIfNotExists(path string) error {
 }
 
 func Unzip(src string, dest string) ([]string, error) {
-
 	var filenames []string
 
 	r, err := zip.OpenReader(src)
@@ -123,7 +127,37 @@ func PipeTemplateToFile(destination string, template *template.Template, data in
 }
 
 func Copy(source string, dest string) error {
+	if !FsExist(source) {
+		return fmt.Errorf("Cannot find %s", source)
+	}
+
 	cmd := exec.Command("cp", "-r", source, dest)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CopyContent(source string, dest string) error {
+	if !FsExist(source) {
+		return fmt.Errorf("Cannot find %s", source)
+	}
+
+	cmd := exec.Command("cp", "-r", path.Join(source, "."), dest)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RmR(path string) error {
+	if !FsExist(path) {
+		return nil
+	}
+
+	cmd := exec.Command("rm", "-r", path)
 	err := cmd.Run()
 	if err != nil {
 		return err

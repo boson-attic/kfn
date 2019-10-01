@@ -17,8 +17,7 @@ package cmd
 
 import (
 	"fmt"
-
-	"github.com/slinkydeveloper/kfn/pkg/kfn"
+	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/spf13/cobra"
 )
 
@@ -29,26 +28,22 @@ var InitCmd = &cobra.Command{
 }
 
 func init() {
-	InitCmd.AddCommand(newInitCmd("js", kfn.Javascript))
+	InitCmd.AddCommand(newInitCmd("js", "Javascript", languages.Javascript))
 	rootCmd.AddCommand(InitCmd)
 }
 
-func newInitCmd(languageCmdName string, language kfn.Language) *cobra.Command {
+func newInitCmd(languageCmdName string, languageLongName string, language languages.Language) *cobra.Command {
 	return &cobra.Command{
 		Use:   fmt.Sprintf("%s [function_name] [directory]", languageCmdName),
 		Args:  cobra.MaximumNArgs(2),
-		Short: "Bootstrap a function",
+		Short: fmt.Sprintf("Bootstrap a %s function", languageLongName),
 		RunE:  newInitCmdFn(language),
 	}
 }
 
-func newInitCmdFn(language kfn.Language) func(cmd *cobra.Command, args []string) error {
+func newInitCmdFn(language languages.Language) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		functionName, directory := resolveFunctionAndDir(args)
-
-		bootstrapper := kfn.ResolveBootrapper(kfn.Javascript)
-
-		return (*bootstrapper).Bootstrap(functionName, directory)
+		return language.Bootstrap(resolveFunctionAndDir(args))
 	}
 }
 

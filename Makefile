@@ -10,4 +10,4 @@ build:
 	packr build -v -o kfn main.go
 
 image:
-	buildah bud --tag kfn .
+	buildah bud --format docker --tag kfn .

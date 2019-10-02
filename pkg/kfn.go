@@ -60,6 +60,10 @@ func Build(location string, language languages.Language, imageName string, image
 		if err != nil {
 			return image.FunctionImage{}, err
 		}
+	} else {
+		if !util.FileExist(location) {
+			return image.FunctionImage{}, fmt.Errorf("cannot find file %s", location)
+		}
 	}
 
 	log.Info("Compiling")

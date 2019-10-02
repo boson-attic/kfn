@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/containers/image/types"
@@ -9,7 +10,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
-	"os"
 	"strings"
 )
 
@@ -30,20 +30,9 @@ func InitializeBuilder(ctx context.Context, systemContext *types.SystemContext, 
 
 	buildOpts := &buildah.CommonBuildOptions{}
 
-	var isolation buildah.Isolation
-
-	envIsolation := os.Getenv("BUILDAH_ISOLATION")
-
-	switch envIsolation {
-	case "chroot":
-		isolation = buildah.IsolationChroot
-	default:
-		isolation = buildah.IsolationOCIRootless
-	}
-
 	opts := buildah.BuilderOptions{
 		FromImage:        fromImage,
-		Isolation:        isolation,
+		Isolation:        config.GetBuildahIsolation(),
 		CommonBuildOpts:  buildOpts,
 		ConfigureNetwork: buildah.NetworkDefault,
 		SystemContext:    systemContext,
@@ -62,7 +51,7 @@ func Add(builder *buildah.Builder, adds ...BuildAdd) error {
 	for _, add := range adds {
 		err := builder.Add(add.To, false, buildah.AddAndCopyOptions{Hasher: digester.Hash()}, add.From)
 		if err != nil {
-			return err
+			return fmt.Errorf("error while adding: %v", err)
 		}
 	}
 	return nil
@@ -75,19 +64,20 @@ type BuildCommand struct {
 
 func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
 	logger := config.GetLoggerWriter()
+	runOptions := buildah.RunOptions{
+		Stdout:    logger,
+		Stderr:    logger,
+		Isolation: config.GetBuildahIsolation(),
+	}
 	for _, cmd := range commands {
 		command := strings.Split(cmd.Command, " ")
 
-		runOptions := buildah.RunOptions{
-			Stdout: logger,
-			Stderr: logger,
-		}
 		if cmd.Wd != "" {
 			runOptions.WorkingDir = cmd.Wd
 		}
 
 		if err := builder.Run(command, runOptions); err != nil {
-			return err
+			return fmt.Errorf("error while runnning command: %v", err)
 		}
 	}
 	return nil

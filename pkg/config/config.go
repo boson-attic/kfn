@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/containers/buildah"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
@@ -17,6 +18,7 @@ const (
 	REGISTRY_PASSWORD   = "registry_password"
 	REGISTRY_TLS_VERIFY = "registry_tls_verify"
 	KUBECONFIG          = "kubeconfig"
+	DEBUG               = "kfn_debug"
 )
 
 const (
@@ -49,11 +51,27 @@ func InitVariables() {
 	Kubeconfig = getEnvStringOrDefault(KUBECONFIG, "")
 
 	// Configure logging
-	if Verbose {
+	if getEnvBoolOrDefault(DEBUG, false) {
+		log.SetLevel(log.DebugLevel)
+	} else if Verbose {
 		log.SetLevel(log.InfoLevel)
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
+}
+
+func GetBuildahIsolation() buildah.Isolation {
+	var isolation buildah.Isolation
+
+	envIsolation := os.Getenv("BUILDAH_ISOLATION")
+	switch envIsolation {
+	case "chroot":
+		isolation = buildah.IsolationChroot
+	default:
+		isolation = buildah.IsolationOCIRootless
+	}
+
+	return isolation
 }
 
 func getEnvOrFail(envName string) string {

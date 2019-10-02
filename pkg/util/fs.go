@@ -12,6 +12,22 @@ import (
 	"text/template"
 )
 
+func FileExist(p ...string) bool {
+	if s, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
+		return false
+	} else {
+		return !s.IsDir()
+	}
+}
+
+func DirExist(p ...string) bool {
+	if s, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
+		return false
+	} else {
+		return s.IsDir()
+	}
+}
+
 func FsExist(p ...string) bool {
 	if _, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
 		return false

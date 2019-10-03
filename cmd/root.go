@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
-	"strings"
 )
 
 var cfgFile string
@@ -64,18 +63,6 @@ func init() {
 	boolFlagWithBind(config.REGISTRY_TLS_VERIFY, true, "TLS Verify when accessing the docker registry")
 
 	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
-}
-
-func stringFlagWithBind(envName, defaultValue, usage string) {
-	flagName := strings.ReplaceAll(envName, "_", "-")
-	rootCmd.PersistentFlags().String(flagName, defaultValue, usage)
-	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
-}
-
-func boolFlagWithBind(envName string, defaultValue bool, usage string) {
-	flagName := strings.ReplaceAll(envName, "_", "-")
-	rootCmd.PersistentFlags().Bool(flagName, defaultValue, usage)
-	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
 }
 
 // initConfig reads in config file and ENV variables if set.

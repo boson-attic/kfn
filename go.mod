@@ -16,6 +16,7 @@ require (
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1
+	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
@@ -29,5 +30,5 @@ require (
 	k8s.io/client-go v0.0.0-20190226174127-78295b709ec6
 	k8s.io/kube-openapi v0.0.0-20190722073852-5e22f3d471e6 // indirect
 	knative.dev/pkg v0.0.0-20190912002835-87ad48336517 // indirect
-	knative.dev/serving v0.8.0
+	knative.dev/serving v0.9.0
 )

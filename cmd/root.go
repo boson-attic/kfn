@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
-		config.InitVariables()
+		config.InitVariables(cmd)
 	},
 }
 

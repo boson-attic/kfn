@@ -21,10 +21,6 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/spf13/cobra"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 // runCmd represents the run command

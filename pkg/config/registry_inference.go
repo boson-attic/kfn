@@ -14,7 +14,7 @@ import (
 // 1. Try to read image registry from config/env/flag and check if there are credentials
 // 2. Try to infer ocp image registry. If there is one available, try to infer credentials from oc whoami
 func inferImageRegistry() (string, string, string, error) {
-	return imTryingToDoSomeFPInGoButItLooksAwful(inferImageRegistryFromEnv, inferImageRegistryFromOCPImageRegistry)
+	return tryDifferentRegistryConfigs(inferImageRegistryFromEnv, inferImageRegistryFromOCPImageRegistry)
 }
 
 func inferImageRegistryFromEnv() (string, string, string, error) {
@@ -66,7 +66,7 @@ func inferImageRegistryFromOCPImageRegistry() (string, string, string, error) {
 	return registryHost, registryUsername, registryPassword, nil
 }
 
-func imTryingToDoSomeFPInGoButItLooksAwful(fs ...func() (string, string, string, error)) (string, string, string, error) {
+func tryDifferentRegistryConfigs(fs ...func() (string, string, string, error)) (string, string, string, error) {
 	errors := make([]error, 0)
 	for _, f := range fs {
 		if name, user, pass, err := f(); err != nil {

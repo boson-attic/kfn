@@ -23,12 +23,12 @@ func (l Language) DownloadRuntimeIfRequired() error {
 	return ResolveLanguageManager(l).DownloadRuntimeIfRequired()
 }
 
-func (l Language) ConfigureTargetDirectory(mainFile string, additionalFiles []string, linkOnly bool) error {
-	return ResolveLanguageManager(l).ConfigureTargetDirectory(mainFile, additionalFiles, linkOnly)
+func (l Language) ConfigureTargetDirectory(mainFile string, linkOnly bool) error {
+	return ResolveLanguageManager(l).ConfigureTargetDirectory(mainFile, linkOnly)
 }
 
-func (l Language) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string) (image.FunctionImage, error) {
-	return ResolveLanguageManager(l).BuildImage(systemContext, imageName, imageTag)
+func (l Language) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error) {
+	return ResolveLanguageManager(l).BuildImage(systemContext, imageName, imageTag, mainExecutable, additionalFiles)
 }
 
 const (

@@ -66,23 +66,23 @@ func Build(location string, language languages.Language, imageName string, image
 		}
 	}
 
-	log.Info("Compiling")
+	log.Info("Configuring target directory")
 
-	main, additionalFiles, err := languageManager.Compile(location)
+	err = languageManager.ConfigureTargetDirectory(location, false)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
-	log.Info("Configuring target directory")
+	log.Info("Compiling")
 
-	err = languageManager.ConfigureTargetDirectory(main, additionalFiles, false)
+	compiledOutput, additionalFiles, err := languageManager.Compile(location)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	log.Info("Starting build image")
 
-	return languageManager.BuildImage(systemContext, imageName, imageTag)
+	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles)
 }
 
 func downloadFunctionFromHTTP(remote, extension string) (string, error) {

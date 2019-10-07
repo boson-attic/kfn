@@ -21,8 +21,6 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
-	"github.com/slinkydeveloper/kfn/pkg/util"
-
 	"path"
 	"path/filepath"
 	"strings"
@@ -47,10 +45,6 @@ func init() {
 }
 
 func buildCmdFn(cmd *cobra.Command, args []string) image.FunctionImage {
-	if err := util.RmR(config.TargetDir); err != nil {
-		panic(err)
-	}
-
 	log.Infof("Using Docker registry: %v\n", config.ImageRegistry)
 
 	functionPath := args[0]

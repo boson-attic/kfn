@@ -29,6 +29,7 @@ var InitCmd = &cobra.Command{
 
 func init() {
 	InitCmd.AddCommand(newInitCmd("js", "Javascript", languages.Javascript))
+	InitCmd.AddCommand(newInitCmd("rust", "Rust", languages.Rust))
 	rootCmd.AddCommand(InitCmd)
 }
 

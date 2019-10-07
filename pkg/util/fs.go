@@ -36,11 +36,6 @@ func FsExist(p ...string) bool {
 	}
 }
 
-func CommandExists(cmd string) bool {
-	_, err := exec.LookPath(cmd)
-	return err == nil
-}
-
 func MkdirpIfNotExists(path string) error {
 	if path != "" && path != "." && !FsExist(path) {
 		return os.MkdirAll(path, os.ModePerm)
@@ -150,7 +145,7 @@ func Copy(source string, dest string) error {
 	cmd := exec.Command("cp", "-r", source, dest)
 	err := cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot copy %s to %s", source, dest)
 	}
 	return nil
 }
@@ -163,9 +158,23 @@ func CopyContent(source string, dest string) error {
 	cmd := exec.Command("cp", "-r", path.Join(source, "."), dest)
 	err := cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot copy %s to %s", source, dest)
 	}
 	return nil
+}
+
+func CopyOrLink(link bool) func(string, string) error {
+	if link {
+		return func(source string, dest string) error {
+			if !FsExist(dest) {
+				return os.Link(source, dest)
+			} else {
+				return nil
+			}
+		}
+	} else {
+		return Copy
+	}
 }
 
 func RmR(path string) error {

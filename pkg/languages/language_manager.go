@@ -12,17 +12,17 @@ type LanguageManager interface {
 	// Check if compiler/package manager are installed
 	CheckCompileDependencies() error
 
-	// Compile with Main input file, additional files
-	Compile(inputFile string) (string, []string, error)
-
 	// Download the runtime required to build the function
 	DownloadRuntimeIfRequired() error
 
 	// Configure target directory with symbolic links
-	ConfigureTargetDirectory(mainFile string, additionalFiles []string, linkOnly bool) error
+	ConfigureTargetDirectory(mainFile string, linkOnly bool) error
+
+	// Compile with Main input file, returns executable + additional files to copy
+	Compile(mainFile string) (string, []string, error)
 
 	// Build the container image
-	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string) (image.FunctionImage, error)
+	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error)
 }
 
 var (

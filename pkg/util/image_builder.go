@@ -11,6 +11,7 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"strings"
+	log "github.com/sirupsen/logrus"
 )
 
 var digester = digest.Canonical.Digester()
@@ -49,6 +50,7 @@ type BuildAdd struct {
 
 func Add(builder *buildah.Builder, adds ...BuildAdd) error {
 	for _, add := range adds {
+		log.Infof("Copying into container image %s to %s", add.From, add.To)
 		err := builder.Add(add.To, false, buildah.AddAndCopyOptions{Hasher: digester.Hash()}, add.From)
 		if err != nil {
 			return fmt.Errorf("error while adding: %v", err)

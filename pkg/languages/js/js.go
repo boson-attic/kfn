@@ -10,7 +10,6 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
-	"os"
 	"path"
 )
 
@@ -71,7 +70,7 @@ func (j jsLanguageManager) Compile(inputFile string) (string, []string, error) {
 	}
 }
 
-func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string) (image.FunctionImage, error) {
+func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error) {
 	builder, err := util.InitializeBuilder(context.TODO(), systemContext, baseImage)
 	if err != nil {
 		return image.FunctionImage{}, err
@@ -141,23 +140,21 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 	return nil
 }
 
-func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, additionalFiles []string, linkOnly bool) error {
+func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, linkOnly bool) error {
 	if err := util.MkdirpIfNotExists(path.Join(config.TargetDir, "usr")); err != nil {
 		return err
 	}
 
-	cp := util.Copy
-	if linkOnly {
-		cp = os.Symlink
-	}
+	cp := util.CopyOrLink(linkOnly)
 
 	err := cp(mainFile, path.Join(config.TargetDir, "usr", "index.js"))
 	if err != nil {
 		return err
 	}
 
-	for _, af := range additionalFiles {
-		err := cp(af, path.Join(config.TargetDir, "usr", path.Base(af)))
+	packageJsonPath := path.Join(path.Dir(mainFile), "package.json")
+	if util.FsExist(packageJsonPath) {
+		err = cp(packageJsonPath, path.Join(config.TargetDir, "usr"))
 		if err != nil {
 			return err
 		}

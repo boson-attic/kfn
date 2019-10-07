@@ -102,7 +102,7 @@ func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageN
 
 	builder.SetCmd([]string{"node", "/home/node/src/index.js"})
 
-	return util.CommitImage(builder, imageName, imageTag)
+	return util.CommitImage(builder, systemContext, imageName, imageTag)
 }
 
 func (j jsLanguageManager) DownloadRuntimeIfRequired() error {

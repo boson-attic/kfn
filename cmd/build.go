@@ -73,7 +73,7 @@ func buildCmdFn(cmd *cobra.Command, args []string) image.FunctionImage {
 		serviceName = imageName
 	}
 
-	ctx, err := parseSystemContext(cmd)
+	ctx, err := config.ParseSystemContext(cmd)
 	if err != nil {
 		panic(fmt.Sprintf("Error while trying to infer context: %v", err))
 	}

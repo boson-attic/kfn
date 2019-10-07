@@ -3,7 +3,10 @@ package config
 import (
 	"fmt"
 	"github.com/containers/buildah"
+	"github.com/containers/buildah/pkg/parse"
+	"github.com/containers/image/types"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
 	"path"
@@ -37,7 +40,7 @@ var (
 	Kubeconfig             string
 )
 
-func InitVariables() {
+func InitVariables(cmd *cobra.Command) {
 	wd, _ := os.Getwd()
 
 	// Configure variables
@@ -58,6 +61,15 @@ func InitVariables() {
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
+
+	var err error
+	systemContext, err := ParseSystemContext(cmd)
+	ImageRegistry, ImageRegistryUsername, ImageRegistryPassword, err = inferImageRegistry(systemContext)
+	if err != nil {
+		panic(err)
+	}
+
+	log.Infof("Using Kubeconfig: %s", Kubeconfig)
 }
 
 func GetBuildahIsolation() buildah.Isolation {
@@ -96,4 +108,24 @@ func getEnvBoolOrDefault(envName string, defaultValue bool) bool {
 	} else {
 		return defaultValue
 	}
+}
+
+func ParseSystemContext(cmd *cobra.Command) (*types.SystemContext, error) {
+	ctx, err := parse.SystemContextFromOptions(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if ImageRegistryUsername != "" {
+		ctx.DockerAuthConfig = &types.DockerAuthConfig{
+			Username: ImageRegistryUsername,
+			Password: ImageRegistryPassword,
+		}
+	}
+
+	ctx.DockerInsecureSkipTLSVerify = types.NewOptionalBool(!ImageRegistryTLSVerify)
+	ctx.OCIInsecureSkipTLSVerify = !ImageRegistryTLSVerify
+	ctx.DockerDaemonInsecureSkipTLSVerify = !ImageRegistryTLSVerify
+
+	return ctx, nil
 }

@@ -20,10 +20,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	serving "knative.dev/serving/pkg/client/clientset/versioned"
-	"os"
 )
 
 // runCmd represents the run command
@@ -43,17 +40,9 @@ func init() {
 func runCmdFn(cmd *cobra.Command, args []string) {
 	functionImage := buildCmdFn(cmd, args)
 
-	var err error
-	var kconfig *rest.Config
-	if os.Getenv("KFN_IN_CLUSTER") == "true" {
-		kconfig, err = rest.InClusterConfig()
-	} else {
-		if config.Kubeconfig != "" {
-			kconfig, err = clientcmd.BuildConfigFromFlags("", config.Kubeconfig)
-		} else {
-			kconfig, err = clientcmd.BuildConfigFromKubeconfigGetter("", clientcmd.NewDefaultClientConfigLoadingRules().Load)
-		}
-	}
+	log.Infof("Image %s pushed", functionImage.ImageName)
+
+	kconfig, err := config.CreateK8sClientConfig()
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create a k8s client config: %+v", err))
 	}

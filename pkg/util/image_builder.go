@@ -83,7 +83,7 @@ func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
 	return nil
 }
 
-func CommitImage(builder *buildah.Builder, imageName string, imageTag string) (image.FunctionImage, error) {
+func CommitImage(builder *buildah.Builder, ctx *types.SystemContext, imageName string, imageTag string) (image.FunctionImage, error) {
 	img := image.FunctionImage{
 		ImageName: imageName,
 		Tag:       imageTag,
@@ -97,6 +97,7 @@ func CommitImage(builder *buildah.Builder, imageName string, imageTag string) (i
 
 	_, _, _, err = builder.Commit(context.TODO(), imageRef, buildah.CommitOptions{
 		PreferredManifestType: buildah.Dockerv2ImageManifest,
+		SystemContext:         ctx,
 	})
 
 	return img, err

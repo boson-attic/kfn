@@ -62,7 +62,12 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	directory, descriptorFilename, err := language.ConfigureEditingDirectory(functionPath, editingDir)
+	functionConfiguration, err := util.ParseConfigComments(languages.GetLineComment(language), functionPath)
+	if err != nil {
+		return err
+	}
+
+	directory, descriptorFilename, err := language.ConfigureEditingDirectory(functionPath, functionConfiguration, editingDir)
 	if err != nil {
 		return err
 	}

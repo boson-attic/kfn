@@ -15,20 +15,20 @@ func (l Language) CheckCompileDependencies() error {
 	return ResolveLanguageManager(l).CheckCompileDependencies()
 }
 
-func (l Language) Compile(mainFile string, targetDirectory string) (string, []string, error) {
-	return ResolveLanguageManager(l).Compile(mainFile, targetDirectory)
+func (l Language) Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (string, []string, error) {
+	return ResolveLanguageManager(l).Compile(mainFile, functionConfiguration, targetDirectory)
 }
 
 func (l Language) DownloadRuntimeIfRequired() error {
 	return ResolveLanguageManager(l).DownloadRuntimeIfRequired()
 }
 
-func (l Language) ConfigureEditingDirectory(mainFile string, editingDirectory string) (string, string, error) {
-	return ResolveLanguageManager(l).ConfigureEditingDirectory(mainFile, editingDirectory)
+func (l Language) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
+	return ResolveLanguageManager(l).ConfigureEditingDirectory(mainFile, functionConfiguration, editingDirectory)
 }
 
-func (l Language) ConfigureTargetDirectory(mainFile string, targetDirectory string) error {
-	return ResolveLanguageManager(l).ConfigureTargetDirectory(mainFile, targetDirectory)
+func (l Language) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
+	return ResolveLanguageManager(l).ConfigureTargetDirectory(mainFile, functionConfiguration, targetDirectory)
 }
 
 func (l Language) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error) {
@@ -50,6 +50,10 @@ func GetExtension(language Language) string {
 	default:
 		return ""
 	}
+}
+
+func GetLineComment(language Language) string {
+	return "//"
 }
 
 func GetLanguage(ext string) Language {

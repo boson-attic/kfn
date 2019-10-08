@@ -9,5 +9,8 @@ check:
 build:
 	packr build -v -o kfn main.go
 
+install:
+	packr install
+
 image:
 	buildah bud --format docker --tag kfn .

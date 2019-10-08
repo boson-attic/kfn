@@ -3,6 +3,7 @@ package util
 import (
 	"archive/zip"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"os/exec"
@@ -106,17 +107,20 @@ type WriteDest struct {
 func WriteFiles(destDir string, dest ...WriteDest) error {
 	for _, d := range dest {
 
-		outFile, err := os.OpenFile(path.Join(destDir, d.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		outFile, err := os.OpenFile(path.Join(destDir, d.Filename), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}
 
-		_, err = outFile.Write(d.Data)
+		_, err = outFile.WriteAt(d.Data, 0)
 		if err != nil {
 			return err
 		}
 
-		outFile.Close()
+		err = outFile.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -142,6 +146,8 @@ func Copy(source string, dest string) error {
 		return fmt.Errorf("Cannot find %s", source)
 	}
 
+	log.Debugf("Copying %s to %s", source, dest)
+
 	cmd := exec.Command("cp", "-r", source, dest)
 	err := cmd.Run()
 	if err != nil {
@@ -159,6 +165,7 @@ func Link(source, dest string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Link doesn't exists, create a new one
+			log.Debugf("Linking %s to %s", source, dest)
 			return os.Symlink(source, dest)
 		} else {
 			// Something strange happened
@@ -185,6 +192,8 @@ func CopyContent(source string, dest string) error {
 	if !FsExist(source) {
 		return fmt.Errorf("Cannot find %s", source)
 	}
+
+	log.Debugf("Copying content of %s to %s", source, dest)
 
 	cmd := exec.Command("cp", "-r", path.Join(source, "."), dest)
 	err := cmd.Run()

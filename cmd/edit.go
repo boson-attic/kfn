@@ -31,7 +31,7 @@ var editCmd = &cobra.Command{
 	Use:   "edit <function> <editor>",
 	Args:  cobra.ExactArgs(2),
 	Short: "Open the editor of your choice. Supported editors: idea, vscode",
-	RunE: editCmdFn,
+	RunE:  editCmdFn,
 }
 
 func init() {
@@ -45,6 +45,8 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	editingDir := config.GetEditingDir(functionPath)
+
 	language := languages.GetLanguage(path.Ext(functionPath))
 	if language == languages.Unknown {
 		return fmt.Errorf("Unknown language for function %s", functionPath)
@@ -55,12 +57,12 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Cannot recognize editor %s", args[1])
 	}
 
-	err = util.MkdirpIfNotExists(config.EditingDir)
+	err = util.MkdirpIfNotExists(editingDir)
 	if err != nil {
 		return err
 	}
 
-	directory , descriptorFilename , err := language.ConfigureEditingDirectory(functionPath)
+	directory, descriptorFilename, err := language.ConfigureEditingDirectory(functionPath, editingDir)
 	if err != nil {
 		return err
 	}

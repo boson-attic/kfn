@@ -95,11 +95,11 @@ func (r rustLanguageManager) CheckCompileDependencies() error {
 	return util.CommandsExists("rustc", "cargo")
 }
 
-func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string) (string, string, error) {
+func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, editingDirectory string) (string, string, error) {
 	initialPath := path.Dir(mainFile)
 
-	cargoDescriptor := path.Join(config.EditingDir, "Cargo.toml")
-	functionFile := path.Join(config.EditingDir, "lib.rs")
+	cargoDescriptor := path.Join(editingDirectory, "Cargo.toml")
+	functionFile := path.Join(editingDirectory, "lib.rs")
 
 	err := util.Link(path.Join(initialPath, "Cargo.toml"), cargoDescriptor)
 	if err != nil {
@@ -111,35 +111,35 @@ func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string) (string,
 		return "", "", err
 	}
 
-	return config.EditingDir, cargoDescriptor, nil
+	return editingDirectory, cargoDescriptor, nil
 }
 
-func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string) error {
+func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, targetDirectory string) error {
 	if !util.FsExist(path.Join(path.Dir(mainFile), "Cargo.toml")) {
 		return fmt.Errorf("Cannot find Cargo.toml in %s", path.Dir(mainFile))
 	}
 
-	if err := util.MkdirpIfNotExists(path.Join(config.TargetDir, "function")); err != nil {
+	if err := util.MkdirpIfNotExists(path.Join(targetDirectory, "function")); err != nil {
 		return err
 	}
 
-	err := util.Copy(mainFile, path.Join(config.TargetDir, "function", "lib.rs"))
+	err := util.Copy(mainFile, path.Join(targetDirectory, "function", "lib.rs"))
 	if err != nil {
 		return err
 	}
 
-	err = util.Copy(path.Join(path.Dir(mainFile), "Cargo.toml"), path.Join(config.TargetDir, "function", "Cargo.toml"))
+	err = util.Copy(path.Join(path.Dir(mainFile), "Cargo.toml"), path.Join(targetDirectory, "function", "Cargo.toml"))
 	if err != nil {
 		return err
 	}
 
-	return util.CopyContent(RuntimeDirectory(), path.Join(config.TargetDir, "runtime"))
+	return util.CopyContent(RuntimeDirectory(), path.Join(targetDirectory, "runtime"))
 }
 
-func (r rustLanguageManager) Compile(inputFile string) (string, []string, error) {
+func (r rustLanguageManager) Compile(mainFile string, targetDirectory string) (string, []string, error) {
 	compileCommand := exec.Command("cargo", "build") // "--release"
 	// Root Cargo.toml is in runtime dir in runtime
-	compileCommand.Dir = path.Join(config.TargetDir, "runtime")
+	compileCommand.Dir = path.Join(targetDirectory, "runtime")
 	// Configure proper logging
 	compileCommand.Stdout = config.GetLoggerWriter()
 	compileCommand.Stderr = config.GetLoggerWriter()
@@ -149,10 +149,10 @@ func (r rustLanguageManager) Compile(inputFile string) (string, []string, error)
 		return "", nil, err
 	}
 
-	return path.Join(config.TargetDir, "runtime", "target", "debug" /* release */, "rust-faas"), nil, nil
+	return path.Join(targetDirectory, "runtime", "target", "debug" /* release */, "rust-faas"), nil, nil
 }
 
-func (r rustLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error) {
+func (r rustLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error) {
 	builder, err := util.InitializeBuilder(context.TODO(), systemContext, "registry.access.redhat.com/ubi8/ubi")
 	if err != nil {
 		return image.FunctionImage{}, err
@@ -182,5 +182,3 @@ func NewRustLanguageManger() languages.LanguageManager {
 func RuntimeDirectory() string {
 	return path.Join(config.RuntimeDir, "rust")
 }
-
-

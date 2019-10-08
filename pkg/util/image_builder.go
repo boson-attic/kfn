@@ -8,10 +8,10 @@ import (
 	"github.com/containers/image/types"
 	"github.com/containers/storage"
 	"github.com/opencontainers/go-digest"
+	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"strings"
-	log "github.com/sirupsen/logrus"
 )
 
 var digester = digest.Canonical.Digester()
@@ -72,6 +72,8 @@ func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
 		Isolation: config.BuildahIsolation,
 	}
 	for _, cmd := range commands {
+		log.Infof("Running command %s in directory %s", cmd.Command, cmd.Wd)
+
 		command := strings.Split(cmd.Command, " ")
 
 		if cmd.Wd != "" {

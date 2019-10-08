@@ -10,6 +10,7 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -19,7 +20,7 @@ func init() {
 }
 
 // Build function handles the different build steps:
-// 1. Create target dir and runtime dir if not existing
+// 1. Calculate and create target dir and runtime dir if not existing
 // 2. Resolve the runtime manager
 // 3. Download required runtime files if needed
 // 4. Resolve the compiler manager
@@ -29,7 +30,9 @@ func init() {
 // 8. Resolve image builder
 // 9. Build image and return the image id
 func Build(location string, language languages.Language, imageName string, imageTag string, systemContext *types.SystemContext) (image.FunctionImage, error) {
-	err := util.MkdirpIfNotExists(config.TargetDir)
+	targetDir := config.GetTargetDir(location)
+
+	err := util.MkdirpIfNotExists(targetDir)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
@@ -60,6 +63,12 @@ func Build(location string, language languages.Language, imageName string, image
 		if err != nil {
 			return image.FunctionImage{}, err
 		}
+
+		location, err = filepath.Abs(location)
+		if err != nil {
+			return image.FunctionImage{}, err
+		}
+
 	} else {
 		if !util.FileExist(location) {
 			return image.FunctionImage{}, fmt.Errorf("cannot find file %s", location)
@@ -68,21 +77,21 @@ func Build(location string, language languages.Language, imageName string, image
 
 	log.Info("Configuring target directory")
 
-	err = languageManager.ConfigureTargetDirectory(location)
+	err = languageManager.ConfigureTargetDirectory(location, targetDir)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	log.Info("Compiling")
 
-	compiledOutput, additionalFiles, err := languageManager.Compile(location)
+	compiledOutput, additionalFiles, err := languageManager.Compile(location, targetDir)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	log.Info("Starting build image")
 
-	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles)
+	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles, targetDir)
 }
 
 func downloadFunctionFromHTTP(remote, extension string) (string, error) {

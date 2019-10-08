@@ -16,16 +16,16 @@ type LanguageManager interface {
 	DownloadRuntimeIfRequired() error
 
 	// Configure a temp directory with symlinks required to edit the file
-	ConfigureEditingDirectory(mainFile string) (directory string, descriptorFilename string, err error)
+	ConfigureEditingDirectory(mainFile string, editingDirectory string) (directory string, descriptorFilename string, err error)
 
 	// Configure target directory
-	ConfigureTargetDirectory(mainFile string) error
+	ConfigureTargetDirectory(mainFile string, targetDirectory string) error
 
 	// Compile with Main input file, returns executable + additional files to copy
-	Compile(mainFile string) (mainExecutable string, additionalFiles []string, err error)
+	Compile(mainFile string, targetDirectory string) (mainExecutable string, additionalFiles []string, err error)
 
 	// Build the container image
-	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error)
+	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error)
 }
 
 var (

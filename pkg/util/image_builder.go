@@ -33,7 +33,7 @@ func InitializeBuilder(ctx context.Context, systemContext *types.SystemContext, 
 
 	opts := buildah.BuilderOptions{
 		FromImage:        fromImage,
-		Isolation:        config.GetBuildahIsolation(),
+		Isolation:        config.BuildahIsolation,
 		CommonBuildOpts:  buildOpts,
 		ConfigureNetwork: buildah.NetworkDefault,
 		SystemContext:    systemContext,
@@ -69,7 +69,7 @@ func RunCommands(builder *buildah.Builder, commands ...BuildCommand) error {
 	runOptions := buildah.RunOptions{
 		Stdout:    logger,
 		Stderr:    logger,
-		Isolation: config.GetBuildahIsolation(),
+		Isolation: config.BuildahIsolation,
 	}
 	for _, cmd := range commands {
 		command := strings.Split(cmd.Command, " ")

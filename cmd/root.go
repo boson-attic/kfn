@@ -25,9 +25,6 @@ import (
 	"os"
 )
 
-var cfgFile string
-var k8sNamespace string
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "kfn",
@@ -35,7 +32,8 @@ var rootCmd = &cobra.Command{
 	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
-		config.InitVariables(cmd)
+		config.InitLogging()
+		config.InitDirVariables()
 	},
 }
 
@@ -51,22 +49,19 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
-
-	rootCmd.PersistentFlags().BoolP(config.VERBOSE, "v", false, "verbose output")
-	viper.BindPFlag(config.VERBOSE, rootCmd.PersistentFlags().Lookup(config.VERBOSE))
-
+	stringFlagWithBind(config.CONFIG, "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
+	boolFlagWithBind(config.VERBOSE, "v", false, "verbose output")
 	stringFlagWithBind(config.REGISTRY, "", "Docker registry where to push the image")
 	stringFlagWithBind(config.REGISTRY_USERNAME, "", "Username to access docker registry")
 	stringFlagWithBind(config.REGISTRY_PASSWORD, "", "Password to access docker registry")
+	boolFlagWithBind(config.REGISTRY_TLS_VERIFY, "", true, "TLS Verify when accessing the docker registry")
 	stringFlagWithBind(config.KUBECONFIG, "", "Kubeconfig")
-	boolFlagWithBind(config.REGISTRY_TLS_VERIFY, true, "TLS Verify when accessing the docker registry")
-
-	rootCmd.PersistentFlags().StringVarP(&k8sNamespace, "namespace", "n", "default", "K8s namespace where to run the service")
+	stringFlagWithBind(config.NAMESPACE, "default", "K8s namespace where to run the service")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	cfgFile := viper.GetString(config.CONFIG)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)

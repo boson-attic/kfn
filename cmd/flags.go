@@ -18,9 +18,9 @@ func stringFlagWithBind(envName, defaultValue, usage string) {
 	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
 }
 
-func boolFlagWithBind(envName string, defaultValue bool, usage string) {
+func boolFlagWithBind(envName string, shorthandFlag string, defaultValue bool, usage string) {
 	flagName := strings.ReplaceAll(envName, "_", "-")
-	rootCmd.PersistentFlags().Bool(flagName, defaultValue, usage)
+	rootCmd.PersistentFlags().BoolP(flagName, shorthandFlag, defaultValue, usage)
 	viper.BindPFlag(envName, rootCmd.PersistentFlags().Lookup(flagName))
 }
 

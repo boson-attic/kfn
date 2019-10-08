@@ -30,6 +30,10 @@ var runCmd = &cobra.Command{
 	Long:  `TODO`,
 	Args:  cobra.ExactArgs(1),
 	Run:   runCmdFn,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		config.InitRunVariables()
+		return config.InitBuildVariables(cmd)
+	},
 }
 
 func init() {
@@ -53,7 +57,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
 
-	err = functionImage.RunImage(servingClient.ServingV1alpha1(), serviceName, k8sNamespace)
+	err = functionImage.RunImage(servingClient.ServingV1alpha1(), serviceName, config.NAMESPACE)
 
 	if err != nil {
 		panic(fmt.Sprintf("Cannot deploy the service: %+v", err))

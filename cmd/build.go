@@ -37,6 +37,9 @@ var buildCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		buildCmdFn(cmd, args)
 	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		return config.InitBuildVariables(cmd)
+	},
 }
 
 func init() {
@@ -67,12 +70,7 @@ func buildCmdFn(cmd *cobra.Command, args []string) image.FunctionImage {
 		serviceName = imageName
 	}
 
-	ctx, err := config.ParseSystemContext(cmd)
-	if err != nil {
-		panic(fmt.Sprintf("Error while trying to infer context: %v", err))
-	}
-
-	functionImage, err := pkg.Build(functionPath, language, imageName, imageTag, ctx)
+	functionImage, err := pkg.Build(functionPath, language, imageName, imageTag, config.BuildSystemContext)
 	if err != nil {
 		panic(fmt.Sprintf("Error while building the image: %v", err))
 	}

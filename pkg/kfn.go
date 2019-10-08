@@ -68,7 +68,7 @@ func Build(location string, language languages.Language, imageName string, image
 
 	log.Info("Configuring target directory")
 
-	err = languageManager.ConfigureTargetDirectory(location, false)
+	err = languageManager.ConfigureTargetDirectory(location)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}

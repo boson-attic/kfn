@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/containers/buildah/pkg/unshare"
 	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/spf13/cobra"
@@ -30,7 +31,8 @@ var runCmd = &cobra.Command{
 	Long:  `TODO`,
 	Args:  cobra.ExactArgs(1),
 	Run:   runCmdFn,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
 		config.InitRunVariables()
 		return config.InitBuildVariables(cmd)
 	},

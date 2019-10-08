@@ -1,18 +1,23 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/parse"
 	"github.com/containers/image/types"
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 const (
+	KFN_DIR_ENV		= "kfn_dir"
 	TARGET_DIR_ENV      = "target_dir"
 	RUNTIME_DIR_ENV     = "runtime_dir"
 	EDITING_DIR_ENV		= "editing_dir"
@@ -28,15 +33,17 @@ const (
 )
 
 const (
+	kfnDirBase     string = ".kfn"
 	targetDirBase  string = "target"
 	runtimeDirBase string = "runtime"
 	editingDirBase string = "editing"
 )
 
 var (
+	KfnDir                 string
 	TargetDir              string
 	RuntimeDir             string
-	EditingDir			   string
+	EditingDir             string
 	Verbose                bool
 	Debug                  bool
 	ImageRegistry          string
@@ -47,6 +54,10 @@ var (
 	BuildahIsolation       buildah.Isolation
 	BuildSystemContext     *types.SystemContext
 )
+
+func init() {
+
+}
 
 func InitLogging() {
 	Verbose = getEnvBoolOrDefault(VERBOSE, false)
@@ -60,13 +71,36 @@ func InitLogging() {
 	}
 }
 
-func InitDirVariables() {
+func InitDirVariables(functionLocation string) {
 	wd, _ := os.Getwd()
+	home, err := homedir.Dir()
 
-	// Configure variables
-	TargetDir = path.Join(wd, getEnvStringOrDefault(TARGET_DIR_ENV, targetDirBase))
-	RuntimeDir = path.Join(wd, getEnvStringOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
-	EditingDir = path.Join(wd, getEnvStringOrDefault(EDITING_DIR_ENV, editingDirBase))
+	KfnDir = getEnvStringOrDefault(KFN_DIR_ENV, kfnDirBase)
+
+	// Cannot retrieve home directory and kfn dir base is not absolute (can happen in container environments)
+	if err != nil && !filepath.IsAbs(KfnDir) {
+		// Work in pwd
+		KfnDir = ""
+		TargetDir = path.Join(wd, getEnvStringOrDefault(TARGET_DIR_ENV, targetDirBase))
+		RuntimeDir = path.Join(wd, getEnvStringOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
+		EditingDir = path.Join(wd, getEnvStringOrDefault(EDITING_DIR_ENV, editingDirBase))
+		return
+	}
+
+	functionHash := hex.EncodeToString(sha256.New().Sum([]byte(functionLocation)))
+
+	// If user don't provide an absolute kfn directory, fallback to ~/.kfn
+	if !filepath.IsAbs(KfnDir) {
+		KfnDir = path.Join(home, KfnDir)
+	}
+
+	TargetDir = path.Join(KfnDir, functionHash, getEnvStringOrDefault(TARGET_DIR_ENV, targetDirBase))
+	RuntimeDir = path.Join(KfnDir, getEnvStringOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
+	EditingDir = path.Join(KfnDir, functionHash, getEnvStringOrDefault(EDITING_DIR_ENV, editingDirBase))
+
+	log.Debugf("Target dir: %s", TargetDir)
+	log.Debugf("Runtime dir: %s", RuntimeDir)
+	log.Debugf("Editing dir: %s", EditingDir)
 }
 
 func InitBuildVariables(cmd *cobra.Command) error {

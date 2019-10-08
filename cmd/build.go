@@ -59,6 +59,8 @@ func buildCmdFn(cmd *cobra.Command, args []string) image.FunctionImage {
 		panic(err)
 	}
 
+	config.InitDirVariables(functionPath)
+
 	language := languages.GetLanguage(path.Ext(functionPath))
 	if language == languages.Unknown {
 		panic(fmt.Sprintf("Unknown language for function %s", functionPath))

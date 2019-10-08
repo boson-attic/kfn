@@ -10,6 +10,7 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -60,6 +61,12 @@ func Build(location string, language languages.Language, imageName string, image
 		if err != nil {
 			return image.FunctionImage{}, err
 		}
+
+		location, err = filepath.Abs(location)
+		if err != nil {
+			return image.FunctionImage{}, err
+		}
+
 	} else {
 		if !util.FileExist(location) {
 			return image.FunctionImage{}, fmt.Errorf("cannot find file %s", location)

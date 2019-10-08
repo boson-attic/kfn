@@ -19,17 +19,32 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
+	"path/filepath"
+)
+
+var (
+	global bool
 )
 
 // cleanCmd represents the clean command
 var cleanCmd = &cobra.Command{
-	Use:   "clean",
-	Short: "Clean runtime & target directory",
+	Use:   "clean <function_name>",
+	Short: "Clean runtime & target directory for the provided function",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		functionPath := args[0]
+		functionPath, err := filepath.Abs(functionPath)
+		if err != nil {
+			return err
+		}
+
+		config.InitDirVariables(functionPath)
+
 		return util.RmR(config.TargetDir, config.RuntimeDir, config.EditingDir)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(cleanCmd)
+
+	cleanCmd.Flags().BoolVarP(&global, "global", "g", false, "Clean global kfn directory (default false)")
 }

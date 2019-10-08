@@ -45,6 +45,8 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	config.InitDirVariables(functionPath)
+
 	language := languages.GetLanguage(path.Ext(functionPath))
 	if language == languages.Unknown {
 		return fmt.Errorf("Unknown language for function %s", functionPath)

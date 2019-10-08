@@ -41,6 +41,7 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 	buildFlags(runCmd)
+	runFlags(runCmd)
 }
 
 func runCmdFn(cmd *cobra.Command, args []string) {
@@ -59,7 +60,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
 
-	err = functionImage.RunImage(servingClient.ServingV1alpha1(), serviceName, config.NAMESPACE)
+	err = functionImage.RunImage(servingClient.ServingV1alpha1(), serviceName, config.Namespace)
 
 	if err != nil {
 		panic(fmt.Sprintf("Cannot deploy the service: %+v", err))

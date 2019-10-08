@@ -211,11 +211,9 @@ func CopyOrLink(link bool) func(string, string) error {
 func RmR(path ...string) error {
 	for _, p := range path {
 		if !FsExist(p) {
-			return nil
+			continue
 		}
-
-		cmd := exec.Command("rm", "-r", p)
-		err := cmd.Run()
+		err := os.RemoveAll(p)
 		if !os.IsNotExist(err) {
 			return err
 		}

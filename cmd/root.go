@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 	Long:  `TODO`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		config.InitLogging()
-		config.InitDirVariables()
+		config.InitKfnDir()
 	},
 }
 
@@ -47,14 +47,8 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	stringFlagWithBind(config.CONFIG, "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
-	boolFlagWithBind(config.VERBOSE, "v", false, "verbose output")
-	stringFlagWithBind(config.REGISTRY, "", "Docker registry where to push the image")
-	stringFlagWithBind(config.REGISTRY_USERNAME, "", "Username to access docker registry")
-	stringFlagWithBind(config.REGISTRY_PASSWORD, "", "Password to access docker registry")
-	boolFlagWithBind(config.REGISTRY_TLS_VERIFY, "", true, "TLS Verify when accessing the docker registry")
-	stringFlagWithBind(config.KUBECONFIG, "", "Kubeconfig")
-	stringFlagWithBind(config.NAMESPACE, "default", "K8s namespace where to run the service")
+	stringFlagWithBind(rootCmd.PersistentFlags(), config.CONFIG, "", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
+	boolFlagWithBind(rootCmd.PersistentFlags(), config.VERBOSE, "v", false, "verbose output")
 }
 
 // initConfig reads in config file and ENV variables if set.

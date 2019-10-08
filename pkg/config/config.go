@@ -15,6 +15,7 @@ import (
 const (
 	TARGET_DIR_ENV      = "target_dir"
 	RUNTIME_DIR_ENV     = "runtime_dir"
+	EDITING_DIR_ENV		= "editing_dir"
 	VERBOSE             = "verbose"
 	REGISTRY            = "registry"
 	REGISTRY_USERNAME   = "registry_username"
@@ -29,12 +30,15 @@ const (
 const (
 	targetDirBase  string = "target"
 	runtimeDirBase string = "runtime"
+	editingDirBase string = "editing"
 )
 
 var (
 	TargetDir              string
 	RuntimeDir             string
+	EditingDir			   string
 	Verbose                bool
+	Debug                  bool
 	ImageRegistry          string
 	ImageRegistryUsername  string
 	ImageRegistryPassword  string
@@ -46,7 +50,8 @@ var (
 
 func InitLogging() {
 	Verbose = getEnvBoolOrDefault(VERBOSE, false)
-	if getEnvBoolOrDefault(DEBUG, false) {
+	Debug = getEnvBoolOrDefault(DEBUG, false)
+	if Debug {
 		log.SetLevel(log.DebugLevel)
 	} else if Verbose {
 		log.SetLevel(log.InfoLevel)
@@ -61,6 +66,7 @@ func InitDirVariables() {
 	// Configure variables
 	TargetDir = path.Join(wd, getEnvStringOrDefault(TARGET_DIR_ENV, targetDirBase))
 	RuntimeDir = path.Join(wd, getEnvStringOrDefault(RUNTIME_DIR_ENV, runtimeDirBase))
+	EditingDir = path.Join(wd, getEnvStringOrDefault(EDITING_DIR_ENV, editingDirBase))
 }
 
 func InitBuildVariables(cmd *cobra.Command) error {

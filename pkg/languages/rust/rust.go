@@ -10,7 +10,6 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path"
 )
@@ -96,7 +95,26 @@ func (r rustLanguageManager) CheckCompileDependencies() error {
 	return util.CommandsExists("rustc", "cargo")
 }
 
-func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, linkOnly bool) error {
+func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string) (string, string, error) {
+	initialPath := path.Dir(mainFile)
+
+	cargoDescriptor := path.Join(config.EditingDir, "Cargo.toml")
+	functionFile := path.Join(config.EditingDir, "lib.rs")
+
+	err := util.Link(path.Join(initialPath, "Cargo.toml"), cargoDescriptor)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = util.Link(mainFile, functionFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	return config.EditingDir, cargoDescriptor, nil
+}
+
+func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string) error {
 	if !util.FsExist(path.Join(path.Dir(mainFile), "Cargo.toml")) {
 		return fmt.Errorf("Cannot find Cargo.toml in %s", path.Dir(mainFile))
 	}
@@ -105,23 +123,17 @@ func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, linkOnly 
 		return err
 	}
 
-	cp := util.CopyOrLink(linkOnly)
-
-	err := cp(mainFile, path.Join(config.TargetDir, "function", "lib.rs"))
+	err := util.Copy(mainFile, path.Join(config.TargetDir, "function", "lib.rs"))
 	if err != nil {
 		return err
 	}
 
-	err = cp(path.Join(path.Dir(mainFile), "Cargo.toml"), path.Join(config.TargetDir, "function", "Cargo.toml"))
+	err = util.Copy(path.Join(path.Dir(mainFile), "Cargo.toml"), path.Join(config.TargetDir, "function", "Cargo.toml"))
 	if err != nil {
 		return err
 	}
 
-	if linkOnly {
-		return os.Link(RuntimeDirectory(), path.Join(config.TargetDir, "runtime"))
-	} else {
-		return util.CopyContent(RuntimeDirectory(), path.Join(config.TargetDir, "runtime"))
-	}
+	return util.CopyContent(RuntimeDirectory(), path.Join(config.TargetDir, "runtime"))
 }
 
 func (r rustLanguageManager) Compile(inputFile string) (string, []string, error) {

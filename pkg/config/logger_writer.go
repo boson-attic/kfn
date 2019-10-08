@@ -6,7 +6,7 @@ import (
 )
 
 func GetLoggerWriter() io.Writer {
-	if Verbose || getEnvBoolOrDefault(DEBUG, false) {
+	if Verbose || Debug {
 		return os.Stdout
 	} else {
 		return NopLogger{}

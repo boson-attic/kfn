@@ -15,11 +15,14 @@ type LanguageManager interface {
 	// Download the runtime required to build the function
 	DownloadRuntimeIfRequired() error
 
-	// Configure target directory with symbolic links
-	ConfigureTargetDirectory(mainFile string, linkOnly bool) error
+	// Configure a temp directory with symlinks required to edit the file
+	ConfigureEditingDirectory(mainFile string) (directory string, descriptorFilename string, err error)
+
+	// Configure target directory
+	ConfigureTargetDirectory(mainFile string) error
 
 	// Compile with Main input file, returns executable + additional files to copy
-	Compile(mainFile string) (string, []string, error)
+	Compile(mainFile string) (mainExecutable string, additionalFiles []string, err error)
 
 	// Build the container image
 	BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string) (image.FunctionImage, error)

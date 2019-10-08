@@ -150,6 +150,37 @@ func Copy(source string, dest string) error {
 	return nil
 }
 
+func Link(source, dest string) error {
+	if !filepath.IsAbs(source) || !filepath.IsAbs(dest) {
+		return fmt.Errorf("Source or dest not absolute: %s -> %s", source, dest)
+	}
+
+	_, err := os.Lstat(dest)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Link doesn't exists, create a new one
+			return os.Symlink(source, dest)
+		} else {
+			// Something strange happened
+			return err
+		}
+	}
+
+	// Link exists, check if valid
+	maybeSource, err := filepath.EvalSymlinks(dest)
+	if maybeSource != source {
+		// If not valid remove and create a new one
+		err := os.Remove(dest)
+		if err != nil {
+			return err
+		} else {
+			return Link(source, dest)
+		}
+	}
+
+	return nil
+}
+
 func CopyContent(source string, dest string) error {
 	if !FsExist(source) {
 		return fmt.Errorf("Cannot find %s", source)
@@ -177,15 +208,17 @@ func CopyOrLink(link bool) func(string, string) error {
 	}
 }
 
-func RmR(path string) error {
-	if !FsExist(path) {
-		return nil
-	}
+func RmR(path ...string) error {
+	for _, p := range path {
+		if !FsExist(p) {
+			return nil
+		}
 
-	cmd := exec.Command("rm", "-r", path)
-	err := cmd.Run()
-	if err != nil {
-		return err
+		cmd := exec.Command("rm", "-r", p)
+		err := cmd.Run()
+		if !os.IsNotExist(err) {
+			return err
+		}
 	}
 	return nil
 }

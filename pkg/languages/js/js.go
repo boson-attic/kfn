@@ -140,27 +140,46 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 	return nil
 }
 
-func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, linkOnly bool) error {
+func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string) (string, string, error) {
+	initialPath := path.Dir(mainFile)
+	functionFile := path.Join(config.EditingDir, "index.js")
+	err := util.Link(mainFile, functionFile)
+	if err != nil {
+		return "", "", err
+	}
+
+	initialPackageJson := path.Join(initialPath, "package.json")
+	var packageJsonDescriptor string
+	if util.FsExist(initialPackageJson) {
+		packageJsonDescriptor = path.Join(config.EditingDir, "package.json")
+		err = util.Link(initialPackageJson, packageJsonDescriptor)
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	return config.EditingDir, packageJsonDescriptor, nil
+}
+
+func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string) error {
 	if err := util.MkdirpIfNotExists(path.Join(config.TargetDir, "usr")); err != nil {
 		return err
 	}
 
-	cp := util.CopyOrLink(linkOnly)
-
-	err := cp(mainFile, path.Join(config.TargetDir, "usr", "index.js"))
+	err := util.Copy(mainFile, path.Join(config.TargetDir, "usr", "index.js"))
 	if err != nil {
 		return err
 	}
 
 	packageJsonPath := path.Join(path.Dir(mainFile), "package.json")
 	if util.FsExist(packageJsonPath) {
-		err = cp(packageJsonPath, path.Join(config.TargetDir, "usr"))
+		err = util.Copy(packageJsonPath, path.Join(config.TargetDir, "usr"))
 		if err != nil {
 			return err
 		}
 	}
 
-	return cp(path.Join(RuntimeDirectory()), path.Join(config.TargetDir, "src"))
+	return util.Copy(path.Join(RuntimeDirectory()), path.Join(config.TargetDir, "src"))
 }
 
 func RuntimeDirectory() string {

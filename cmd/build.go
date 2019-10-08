@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/containers/buildah/pkg/unshare"
 	"github.com/slinkydeveloper/kfn/pkg"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
@@ -34,10 +35,12 @@ import (
 var buildCmd = &cobra.Command{
 	Use:   "build <function_name>",
 	Short: "Build the function image",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		buildCmdFn(cmd, args)
 	},
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		unshare.MaybeReexecUsingUserNamespace(false) // Do crazy stuff that allows buildah to work
 		return config.InitBuildVariables(cmd)
 	},
 }

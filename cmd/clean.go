@@ -26,12 +26,7 @@ var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Clean runtime & target directory",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := util.RmR(config.TargetDir)
-		if err != nil {
-			return err
-		}
-
-		return util.RmR(config.RuntimeDir)
+		return util.RmR(config.TargetDir, config.RuntimeDir, config.EditingDir)
 	},
 }
 

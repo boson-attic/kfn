@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	KFN_DIR_ENV		= "kfn_dir"
+	KFN_DIR_ENV         = "kfn_dir"
 	TARGET_DIR_ENV      = "target_dir"
 	RUNTIME_DIR_ENV     = "runtime_dir"
-	EDITING_DIR_ENV		= "editing_dir"
+	EDITING_DIR_ENV     = "editing_dir"
 	VERBOSE             = "verbose"
 	REGISTRY            = "registry"
 	REGISTRY_USERNAME   = "registry_username"
@@ -28,8 +28,8 @@ const (
 	REGISTRY_TLS_VERIFY = "registry_tls_verify"
 	KUBECONFIG          = "kubeconfig"
 	DEBUG               = "kfn_debug"
-	CONFIG				= "config"
-	NAMESPACE			= "namespace"
+	CONFIG              = "config"
+	NAMESPACE           = "namespace"
 )
 
 const (
@@ -69,6 +69,16 @@ func InitLogging() {
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
+}
+
+func GetKfnDir() string {
+	KfnDir = getEnvStringOrDefault(KFN_DIR_ENV, kfnDirBase)
+	home, _ := homedir.Dir()
+	if !filepath.IsAbs(KfnDir) {
+		KfnDir = path.Join(home, KfnDir)
+	}
+
+	return KfnDir
 }
 
 func InitDirVariables(functionLocation string) {

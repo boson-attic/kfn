@@ -31,6 +31,9 @@ var cleanCmd = &cobra.Command{
 	Use:   "clean <function_name>",
 	Short: "Clean runtime & target directory for the provided function",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if global {
+			return util.RmR(config.GetKfnDir())
+		}
 		functionPath := args[0]
 		functionPath, err := filepath.Abs(functionPath)
 		if err != nil {
@@ -39,7 +42,7 @@ var cleanCmd = &cobra.Command{
 
 		config.InitDirVariables(functionPath)
 
-		return util.RmR(config.TargetDir, config.RuntimeDir, config.EditingDir)
+		return util.RmR(config.TargetDir, config.EditingDir)
 	},
 }
 

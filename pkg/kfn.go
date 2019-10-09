@@ -73,16 +73,30 @@ func Build(location string, language languages.Language, imageName string, image
 		}
 	}
 
+	log.Infof("Retrieving function configuration")
+
+	functionConfiguration, err := util.ParseConfigComments(languages.GetLineComment(language), location)
+	if err != nil {
+		return image.FunctionImage{}, err
+	}
+
+	// Log only if needed
+	if config.Verbose {
+		for k, v := range functionConfiguration {
+			log.Infof("Configuration entry %s: %s", k, v)
+		}
+	}
+
 	log.Info("Configuring target directory")
 
-	err = languageManager.ConfigureTargetDirectory(location)
+	err = languageManager.ConfigureTargetDirectory(location, functionConfiguration)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	log.Info("Compiling")
 
-	compiledOutput, additionalFiles, err := languageManager.Compile(location)
+	compiledOutput, additionalFiles, err := languageManager.Compile(location, functionConfiguration)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}

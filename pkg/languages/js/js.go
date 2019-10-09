@@ -2,6 +2,7 @@ package js
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/containers/image/types"
 	"github.com/sirupsen/logrus"
@@ -11,6 +12,7 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"io/ioutil"
 	"path"
+	"strings"
 )
 
 const (
@@ -23,7 +25,7 @@ type jsLanguageManager struct {
 }
 
 func NewJsLanguageManger() languages.LanguageManager {
-	return jsLanguageManager{util.NewResourceLoader("../../bootstrap_templates/js")}
+	return jsLanguageManager{util.NewResourceLoader("../../templates/js")}
 }
 
 func (r jsLanguageManager) Bootstrap(functionName string, targetDirectory string) error {
@@ -33,18 +35,6 @@ func (r jsLanguageManager) Bootstrap(functionName string, targetDirectory string
 	}
 
 	main, err := r.resourceLoader.LoadResource("index.js")
-	if err != nil {
-		return err
-	}
-
-	packageJsonTempl, err := r.resourceLoader.LoadTemplate("package.json")
-	if err != nil {
-		return err
-	}
-
-	err = util.PipeTemplateToFile(path.Join(targetDirectory, "package.json"), packageJsonTempl, struct {
-		FunctionName string
-	}{functionName})
 	if err != nil {
 		return err
 	}
@@ -60,13 +50,13 @@ func (j jsLanguageManager) CheckCompileDependencies() error {
 	return nil
 }
 
-func (j jsLanguageManager) Compile(inputFile string) (string, []string, error) {
-	dir, _ := path.Split(inputFile)
+func (j jsLanguageManager) Compile(mainFile string, functionConfiguration map[string][]string) (string, []string, error) {
+	dir, _ := path.Split(mainFile)
 	packageJson := path.Join(dir, "package.json")
 	if util.FsExist(packageJson) {
-		return inputFile, []string{packageJson}, nil
+		return mainFile, []string{packageJson}, nil
 	} else {
-		return inputFile, []string{}, nil
+		return mainFile, []string{}, nil
 	}
 }
 
@@ -105,7 +95,7 @@ func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageN
 }
 
 func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
-	if !util.FsExist(RuntimeDirectory()) {
+	if !util.FsExist(runtimeDirectory()) {
 		if err := util.MkdirpIfNotExists(config.RuntimeDir); err != nil {
 			return err
 		}
@@ -129,39 +119,38 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 
 		logrus.Infof("Runtime unzipped to %s", tempDir)
 
-		if err := util.CopyContent(path.Join(tempDir, "faas-js-runtime-image-master", "src"), RuntimeDirectory()); err != nil {
+		if err := util.CopyContent(path.Join(tempDir, "faas-js-runtime-image-master", "src"), runtimeDirectory()); err != nil {
 			return err
 		}
 
-		logrus.Infof("Copied runtime to %s", RuntimeDirectory())
+		logrus.Infof("Copied runtime to %s", runtimeDirectory())
 	} else {
-		logrus.Infof("Using runtime cached in %s", RuntimeDirectory())
+		logrus.Infof("Using runtime cached in %s", runtimeDirectory())
 	}
 	return nil
 }
 
-func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string) (string, string, error) {
-	initialPath := path.Dir(mainFile)
+func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string) (string, string, error) {
 	functionFile := path.Join(config.EditingDir, "index.js")
 	err := util.Link(mainFile, functionFile)
 	if err != nil {
 		return "", "", err
 	}
 
-	initialPackageJson := path.Join(initialPath, "package.json")
-	var packageJsonDescriptor string
-	if util.FsExist(initialPackageJson) {
-		packageJsonDescriptor = path.Join(config.EditingDir, "package.json")
-		err = util.Link(initialPackageJson, packageJsonDescriptor)
-		if err != nil {
-			return "", "", err
-		}
+	packageJson, err := generatePackageJson(functionConfiguration)
+	if err != nil {
+		return "", "", err
 	}
 
-	return config.EditingDir, packageJsonDescriptor, nil
+	err = util.WriteFiles(config.EditingDir, util.WriteDest{Filename: "package.json", Data: packageJson})
+	if err != nil {
+		return "", "", err
+	}
+
+	return config.EditingDir, path.Join(config.EditingDir, "package.json"), nil
 }
 
-func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string) error {
+func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string) error {
 	if err := util.MkdirpIfNotExists(path.Join(config.TargetDir, "usr")); err != nil {
 		return err
 	}
@@ -171,17 +160,43 @@ func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string) error {
 		return err
 	}
 
-	packageJsonPath := path.Join(path.Dir(mainFile), "package.json")
-	if util.FsExist(packageJsonPath) {
-		err = util.Copy(packageJsonPath, path.Join(config.TargetDir, "usr"))
-		if err != nil {
-			return err
+	packageJson, err := generatePackageJson(functionConfiguration)
+	if err != nil {
+		return err
+	}
+
+	err = util.WriteFiles(path.Join(config.TargetDir, "usr"), util.WriteDest{Filename: "package.json", Data: packageJson})
+	if err != nil {
+		return err
+	}
+
+	return util.Copy(runtimeDirectory(), path.Join(config.TargetDir, "src"))
+}
+
+func runtimeDirectory() string {
+	return path.Join(config.RuntimeDir, "js")
+}
+
+func generatePackageJson(configurationEntries map[string][]string) ([]byte, error) {
+	root := make(map[string]interface{})
+
+	root["name"] = "function"
+	root["version"] = "0.0.1"
+	root["description"] = ""
+
+	depsRoot := make(map[string]string)
+
+	if deps, ok := configurationEntries[util.DEPENDENCY]; ok {
+		for _, dep := range deps {
+			splitted := strings.Split(dep, " ")
+			if len(splitted) != 2 {
+				return nil, fmt.Errorf("Invalid dependency entry: %v", dep)
+			}
+			depsRoot[strings.Trim(splitted[0], " ")] = strings.Trim(splitted[1], " ")
 		}
 	}
 
-	return util.Copy(path.Join(RuntimeDirectory()), path.Join(config.TargetDir, "src"))
-}
+	root["dependencies"] = depsRoot
 
-func RuntimeDirectory() string {
-	return path.Join(config.RuntimeDir, "js")
+	return json.MarshalIndent(root, "", "  ")
 }

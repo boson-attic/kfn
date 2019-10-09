@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/containers/image/types"
+	"github.com/pelletier/go-toml"
 	"github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
@@ -12,6 +13,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"path"
+	"strings"
 )
 
 const (
@@ -33,18 +35,6 @@ func (r rustLanguageManager) Bootstrap(functionName string, targetDirectory stri
 		return err
 	}
 
-	packageJsonTempl, err := r.resourceLoader.LoadTemplate("Cargo.toml")
-	if err != nil {
-		return err
-	}
-
-	err = util.PipeTemplateToFile(path.Join(targetDirectory, "Cargo.toml"), packageJsonTempl, struct {
-		FunctionName string
-	}{functionName})
-	if err != nil {
-		return err
-	}
-
 	return util.WriteFiles(
 		targetDirectory,
 		util.WriteDest{fmt.Sprintf("%s.rs", functionName), main},
@@ -52,8 +42,8 @@ func (r rustLanguageManager) Bootstrap(functionName string, targetDirectory stri
 }
 
 func (r rustLanguageManager) DownloadRuntimeIfRequired() error {
-	if !util.FsExist(RuntimeDirectory()) {
-		if err := util.MkdirpIfNotExists(RuntimeDirectory()); err != nil {
+	if !util.FsExist(runtimeDirectory()) {
+		if err := util.MkdirpIfNotExists(runtimeDirectory()); err != nil {
 			return err
 		}
 
@@ -76,17 +66,17 @@ func (r rustLanguageManager) DownloadRuntimeIfRequired() error {
 
 		logrus.Infof("Runtime unzipped to %s", tempDir)
 
-		if err := util.Copy(path.Join(tempDir, "faas-rust-runtime-master", "src"), path.Join(RuntimeDirectory(), "src")); err != nil {
+		if err := util.Copy(path.Join(tempDir, "faas-rust-runtime-master", "src"), path.Join(runtimeDirectory(), "src")); err != nil {
 			return err
 		}
 
-		if err := util.Copy(path.Join(tempDir, "faas-rust-runtime-master", "Cargo.toml"), path.Join(RuntimeDirectory())); err != nil {
+		if err := util.Copy(path.Join(tempDir, "faas-rust-runtime-master", "Cargo.toml"), path.Join(runtimeDirectory())); err != nil {
 			return err
 		}
 
-		logrus.Infof("Copied runtime to %s", RuntimeDirectory())
+		logrus.Infof("Copied runtime to %s", runtimeDirectory())
 	} else {
-		logrus.Infof("Using runtime cached in %s", RuntimeDirectory())
+		logrus.Infof("Using runtime cached in %s", runtimeDirectory())
 	}
 	return nil
 }
@@ -95,13 +85,15 @@ func (r rustLanguageManager) CheckCompileDependencies() error {
 	return util.CommandsExists("rustc", "cargo")
 }
 
-func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string) (string, string, error) {
-	initialPath := path.Dir(mainFile)
-
-	cargoDescriptor := path.Join(config.EditingDir, "Cargo.toml")
+func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string) (string, string, error) {
 	functionFile := path.Join(config.EditingDir, "lib.rs")
 
-	err := util.Link(path.Join(initialPath, "Cargo.toml"), cargoDescriptor)
+	cargoToml, err := generateCargoToml(functionConfiguration)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = util.WriteFiles(config.EditingDir, util.WriteDest{Filename: "Cargo.toml", Data: cargoToml})
 	if err != nil {
 		return "", "", err
 	}
@@ -111,14 +103,10 @@ func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string) (string,
 		return "", "", err
 	}
 
-	return config.EditingDir, cargoDescriptor, nil
+	return config.EditingDir, path.Join(config.EditingDir, "Cargo.toml"), nil
 }
 
-func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string) error {
-	if !util.FsExist(path.Join(path.Dir(mainFile), "Cargo.toml")) {
-		return fmt.Errorf("Cannot find Cargo.toml in %s", path.Dir(mainFile))
-	}
-
+func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string) error {
 	if err := util.MkdirpIfNotExists(path.Join(config.TargetDir, "function")); err != nil {
 		return err
 	}
@@ -128,16 +116,21 @@ func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string) error {
 		return err
 	}
 
-	err = util.Copy(path.Join(path.Dir(mainFile), "Cargo.toml"), path.Join(config.TargetDir, "function", "Cargo.toml"))
+	cargoToml, err := generateCargoToml(functionConfiguration)
 	if err != nil {
 		return err
 	}
 
-	return util.CopyContent(RuntimeDirectory(), path.Join(config.TargetDir, "runtime"))
+	err = util.WriteFiles(path.Join(config.TargetDir, "function"), util.WriteDest{Filename: "Cargo.toml", Data: cargoToml})
+	if err != nil {
+		return err
+	}
+
+	return util.CopyContent(runtimeDirectory(), path.Join(config.TargetDir, "runtime"))
 }
 
-func (r rustLanguageManager) Compile(inputFile string) (string, []string, error) {
-	compileCommand := exec.Command("cargo", "build") // "--release"
+func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[string][]string) (string, []string, error) {
+	compileCommand := exec.Command("cargo", "build") // --release
 	// Root Cargo.toml is in runtime dir in runtime
 	compileCommand.Dir = path.Join(config.TargetDir, "runtime")
 	// Configure proper logging
@@ -176,11 +169,47 @@ func (r rustLanguageManager) BuildImage(systemContext *types.SystemContext, imag
 }
 
 func NewRustLanguageManger() languages.LanguageManager {
-	return rustLanguageManager{util.NewResourceLoader("../../bootstrap_templates/rust")}
+	return rustLanguageManager{util.NewResourceLoader("../../templates/rust")}
 }
 
-func RuntimeDirectory() string {
+func runtimeDirectory() string {
 	return path.Join(config.RuntimeDir, "rust")
 }
 
+type CargoFile struct {
+	Package      map[string]string `toml:"package"`
+	Lib          map[string]string `toml:"lib"`
+	Dependencies map[string]string `toml:"dependencies"`
+}
 
+func generateCargoToml(configurationEntries map[string][]string) ([]byte, error) {
+	deps := make(map[string]string)
+	deps["actix-web"] = "1.0.8"
+	deps["serde_json"] = "1.0"
+	deps["futures"] = "0.1.29"
+
+	if depConfigs, ok := configurationEntries[util.DEPENDENCY]; ok {
+		for _, dep := range depConfigs {
+			splitted := strings.Split(dep, " ")
+			if len(splitted) != 2 {
+				return nil, fmt.Errorf("Invalid dependency entry: %v", dep)
+			}
+			deps[strings.Trim(splitted[0], " ")] = strings.Trim(splitted[1], " ")
+		}
+	}
+
+	root := CargoFile{
+		Package: map[string]string{
+			"name":    "function",
+			"version": "0.0.1",
+			"edition": "2018",
+		},
+		Lib: map[string]string{
+			"path": "lib.rs",
+		},
+		Dependencies: deps,
+	}
+
+	return toml.Marshal(root)
+
+}

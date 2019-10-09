@@ -31,7 +31,7 @@ var editCmd = &cobra.Command{
 	Use:   "edit <function> <editor>",
 	Args:  cobra.ExactArgs(2),
 	Short: "Open the editor of your choice. Supported editors: idea, vscode",
-	RunE: editCmdFn,
+	RunE:  editCmdFn,
 }
 
 func init() {
@@ -62,7 +62,12 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	directory , descriptorFilename , err := language.ConfigureEditingDirectory(functionPath)
+	functionConfiguration, err := util.ParseConfigComments(languages.GetLineComment(language), functionPath)
+	if err != nil {
+		return err
+	}
+
+	directory, descriptorFilename, err := language.ConfigureEditingDirectory(functionPath, functionConfiguration)
 	if err != nil {
 		return err
 	}

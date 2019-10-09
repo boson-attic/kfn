@@ -1,3 +1,5 @@
+// kfn:dependency primal 0.2.3
+
 use serde_json::json;
 
 // Function must have this signature
@@ -10,7 +12,8 @@ pub fn function(event: Option<serde_json::Value>) -> impl futures::Future<Item=O
         .and_then(|v| v.as_str())
         .unwrap_or("World");
     let json = json!({
-        "Hello": name
+        "Hello": name,
+        "A_fibonacci_number": primal::StreamingSieve::nth_prime(10)
     });
     futures::finished(Some(json))
 }

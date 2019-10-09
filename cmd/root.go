@@ -46,8 +46,8 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	stringFlagWithBind(rootCmd.Flags(), config.CONFIG, "", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
-	boolFlagWithBind(rootCmd.Flags(), config.VERBOSE, "v", false, "verbose output")
+	stringFlagWithBind(rootCmd.PersistentFlags(), config.CONFIG, "", "", "config file (default is $HOME/.kfn.yaml or $(pwd)/.kfn.yaml)")
+	boolFlagWithBind(rootCmd.PersistentFlags(), config.VERBOSE, "v", false, "verbose output")
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -53,6 +53,7 @@ var (
 	Kubeconfig             string
 	BuildahIsolation       buildah.Isolation
 	BuildSystemContext     *types.SystemContext
+	Namespace              string
 )
 
 func init() {
@@ -134,6 +135,7 @@ func InitBuildVariables(cmd *cobra.Command) error {
 
 func InitRunVariables() {
 	Kubeconfig = getEnvStringOrDefault(KUBECONFIG, "")
+	Namespace = getEnvStringOrDefault(NAMESPACE, "default")
 }
 
 func getBuildahIsolation() buildah.Isolation {

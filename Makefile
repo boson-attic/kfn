@@ -7,6 +7,7 @@ check:
 	endif
 
 build:
+	cd dsl && antlr4 -Dlanguage=Go -o ../pkg/dsl/gen -package gen -listener -visitor Kfn.g4
 	packr build -v -o kfn main.go
 
 install:

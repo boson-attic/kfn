@@ -4,13 +4,18 @@ go 1.12
 
 require (
 	github.com/14rcole/gopopulate v0.0.0-20180821133914-b175b219e774 // indirect
+	github.com/antlr/antlr4 v0.0.0-20191005235324-c81b4e69b6c3
 	github.com/containers/buildah v1.10.1
 	github.com/containers/image v3.0.2+incompatible
 	github.com/containers/storage v1.13.2
 	github.com/evanphx/json-patch v4.5.0+incompatible // indirect
+	github.com/go-yaml/yaml v2.1.0+incompatible
 	github.com/gobuffalo/packr v1.30.1
+	github.com/gogo/protobuf v1.3.0 // indirect
+	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/go-containerregistry v0.0.0-20190911193316-8b1ae43a6dc3 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
@@ -26,7 +31,12 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.4.0 // indirect
+	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 // indirect
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	golang.org/x/sys v0.0.0-20190922100055-0a153f010e69 // indirect
+	google.golang.org/appengine v1.6.1 // indirect
+	google.golang.org/genproto v0.0.0-20190801165951-fa694d86fc64 // indirect
+	google.golang.org/grpc v1.22.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00

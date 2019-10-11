@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	imageName string
-	imageTag string
+	imageName   string
+	imageTag    string
 	serviceName string
 )
 
@@ -53,5 +53,5 @@ func buildFlags(cmd *cobra.Command) {
 
 func runFlags(cmd *cobra.Command) {
 	stringFlagWithBind(cmd.Flags(), config.KUBECONFIG, "", "", "Kubeconfig")
-	stringFlagWithBind(cmd.Flags(), config.NAMESPACE, "", "default", "K8s namespace where to run the service")
+	stringFlagWithBind(cmd.Flags(), config.NAMESPACE, "n", "default", "K8s namespace where to run the service")
 }

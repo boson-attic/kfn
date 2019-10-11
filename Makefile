@@ -10,6 +10,9 @@ else
 $(info packr: $(PACKR))
 endif
 
+gen:
+	cd dsl && antlr4 -Dlanguage=Go -o ../pkg/dsl/gen -package gen -listener -visitor Kfn.g4
+
 build: check
 	packr build -v -o kfn main.go
 

@@ -26,7 +26,13 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/dsl/gen"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"io/ioutil"
 	"os"
+)
+
+const (
+	GRAPH = "graph"
 )
 
 //TODO For now this command outputs yaml, in future it should apply it for real
@@ -48,6 +54,8 @@ func init() {
 	rootCmd.AddCommand(applyCmd)
 	buildFlags(applyCmd)
 	runFlags(applyCmd)
+
+	stringFlagWithBind(applyCmd.Flags(), GRAPH, "", "", "Output graph to specified file")
 }
 
 func applyCmdFn(cmd *cobra.Command, args []string) error {
@@ -142,7 +150,23 @@ func applyCmdFn(cmd *cobra.Command, args []string) error {
 
 	log.Infof("All Resources created, writing to %s", args[1])
 
-	return outputToYaml(append(descriptors, connectionsDescriptors...), args[1])
+	err = outputToYaml(append(descriptors, connectionsDescriptors...), args[1])
+	if err != nil {
+		return err
+	}
+
+	graphFile := viper.GetString(GRAPH)
+	if graphFile != "" {
+		log.Infof("Phase 8 - Generating graph file")
+		dotGraph := dsl.GenerateDigraph(expandedWires, parsedSymbols)
+		log.Infof("Writing graph file to %s", graphFile)
+		err := ioutil.WriteFile(graphFile, []byte(dotGraph), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func outputToYaml(yamls []interface{}, outputFile string) error {

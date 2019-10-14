@@ -85,73 +85,73 @@ func (k *knativeService) generateService() interface{} {
 
 func (k *knativeService) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
 	switch previous.(type) {
+	case *inMemoryChannel:
+		if next != nil {
+			switch next.(type) {
+			case *kafkaChannel:
+				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "KafkaChannel")}, nil
+			case *inMemoryChannel:
+				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "InMemoryChannel")}, nil
+			}
+		} else {
+			return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", "", "")}, nil
+		}
 	case *kafkaChannel:
 		if next != nil {
 			switch next.(type) {
 			case *kafkaChannel:
-				return []interface{}{k.generateChannelToChannelSub(previous.(*kafkaChannel), next.(*kafkaChannel))}, nil
+				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "KafkaChannel")}, nil
+			case *inMemoryChannel:
+				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "InMemoryChannel")}, nil
 			}
 		} else {
-			return []interface{}{k.generateChannelSub(previous.(*kafkaChannel))}, nil
+			return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", "", "")}, nil
 		}
 	}
 	return []interface{}{}, nil
 }
 
-func (k *knativeService) generateChannelToChannelSub(previousChannel *kafkaChannel, nextChannel *kafkaChannel) map[string]interface{} {
-	return map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "Subscription",
-		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s-%s", previousChannel.name, k.serviceName, nextChannel.name),
-			"namespace": config.Namespace,
+func (f *knativeService) generateChannelToChannelSub(previousChannelName string, previousChannelType string, nextChannelName string, nextChannelType string) map[string]interface{} {
+	specMap := map[string]interface{}{
+		"channel": map[string]interface{}{
+			"apiVersion": "messaging.knative.dev/v1alpha1",
+			"kind":       previousChannelType,
+			"name":       previousChannelName,
 		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "KafkaChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "serving.knative.dev/v1alpha1",
-					"kind":       "Service",
-					"name":       k.serviceName,
-				},
-			},
-			"reply": map[string]interface{}{
-				"channel": map[string]interface{}{
-					"apiVersion": "messaging.knative.dev/v1alpha1",
-					"kind":       "KafkaChannel",
-					"name":       nextChannel.name,
-				},
+		"subscriber": map[string]interface{}{
+			"ref": map[string]interface{}{
+				"apiVersion": "serving.knative.dev/v1alpha1",
+				"kind":       "Service",
+				"name":       f.serviceName,
 			},
 		},
 	}
-}
 
-func (k *knativeService) generateChannelSub(previousChannel *kafkaChannel) map[string]interface{} {
+	if nextChannelName != "" {
+		specMap["reply"] = map[string]interface{}{
+			"channel": map[string]interface{}{
+				"apiVersion": "messaging.knative.dev/v1alpha1",
+				"kind":       nextChannelType,
+				"name":       nextChannelName,
+			},
+		}
+	}
+
+	var subName string
+	if nextChannelName != "" {
+		subName = fmt.Sprintf("%s-%s-%s", previousChannelName, f.serviceName, nextChannelName)
+	} else {
+		subName = fmt.Sprintf("%s-%s", previousChannelName, f.serviceName)
+	}
+
 	return map[string]interface{}{
 		"apiVersion": "messaging.knative.dev/v1alpha1",
 		"kind":       "Subscription",
 		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s", previousChannel.name, k.serviceName),
+			"name":      subName,
 			"namespace": config.Namespace,
 		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "KafkaChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "serving.knative.dev/v1alpha1",
-					"kind":       "Service",
-					"name":       k.serviceName,
-				},
-			},
-		},
+		"spec": specMap,
 	}
 }
 

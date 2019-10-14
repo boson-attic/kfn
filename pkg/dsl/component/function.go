@@ -162,11 +162,18 @@ func (f *Function) generateChannelToChannelSub(previousChannelName string, previ
 		}
 	}
 
+	var subName string
+	if nextChannelName != "" {
+		subName = fmt.Sprintf("%s-%s-%s", previousChannelName, f.serviceName, nextChannelName)
+	} else {
+		subName = fmt.Sprintf("%s-%s", previousChannelName, f.serviceName)
+	}
+
 	return map[string]interface{}{
 		"apiVersion": "messaging.knative.dev/v1alpha1",
 		"kind":       "Subscription",
 		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s-%s", previousChannelName, f.serviceName, nextChannelName),
+			"name":      subName,
 			"namespace": config.Namespace,
 		},
 		"spec": specMap,

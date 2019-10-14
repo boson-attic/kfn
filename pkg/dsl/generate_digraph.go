@@ -13,7 +13,7 @@ func GenerateDigraph(wires [][]string, symbolsTable map[string]component.Compone
 	sb.WriteString("digraph function_expanded_graph {\n")
 
 	for k, v := range symbolsTable {
-		sb.WriteString(strconv.Quote(k) + " [label=" + strconv.Quote(fmt.Sprintf("%s", v)) + "];\n")
+		sb.WriteString(strconv.Quote(k) + " [label=" + strconv.Quote(fmt.Sprintf("%s", v)) + ", shape=box];\n")
 	}
 
 	for _, w := range wires {

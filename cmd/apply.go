@@ -24,6 +24,7 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/dsl"
 	"github.com/slinkydeveloper/kfn/pkg/dsl/gen"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -56,12 +57,23 @@ func applyCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	errorListener := dsl.NewErrorListener()
+
 	lexer := gen.NewKfnLexer(input)
+	lexer.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
+	lexer.AddErrorListener(errorListener)
+
 	stream := antlr.NewCommonTokenStream(lexer, 0)
 	p := gen.NewKfnParser(stream)
 	p.AddErrorListener(antlr.NewDiagnosticErrorListener(true))
+	p.AddErrorListener(errorListener)
 	p.BuildParseTrees = true
 	tree := p.Kfn()
+
+	// Check syntax/parser errors
+	if len(errorListener.GetErrors()) != 0 {
+		return util.CombineErrors(errorListener.GetErrors())
+	}
 
 	log.Infof("Phase 1 - Create symbol table")
 

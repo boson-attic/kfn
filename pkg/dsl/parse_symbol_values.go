@@ -28,7 +28,7 @@ func ParseComponent(c gen.IComponentContext) (component.Component, error) {
 		val := unquote(comp.ComponentValue().GetText())
 		function := component.NewFunction(val, nil)
 		err := function.Validate()
-		if err != nil {
+		if err == nil {
 			return function, nil
 		} else {
 			return nil, err
@@ -53,7 +53,13 @@ func ParseComponent(c gen.IComponentContext) (component.Component, error) {
 		antlr.ParseTreeWalkerDefault.Walk(&collector, componentOptionsList)
 	}
 
-	return componentFactory(componentValue, options), nil
+	newComponent := componentFactory(componentValue, options)
+	err := newComponent.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return newComponent, nil
 }
 
 type componentOptionCollector struct {

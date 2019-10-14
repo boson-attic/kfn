@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/containers/buildah"
 	"github.com/containers/buildah/pkg/unshare"
+	"github.com/containers/image/transports"
 	"github.com/containers/image/types"
 	"github.com/containers/storage"
 	"github.com/opencontainers/go-digest"
@@ -93,7 +94,11 @@ func CommitImage(builder *buildah.Builder, ctx *types.SystemContext, imageName s
 		Tag:       imageTag,
 	}
 
+	log.Debugf("Using FunctionImage %+v", img)
+
 	imageRef, err := img.ParseSpecDest()
+
+	log.Infof("Commiting image to %s", transports.ImageName(imageRef))
 
 	if err != nil {
 		return image.FunctionImage{}, err

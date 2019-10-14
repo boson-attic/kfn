@@ -2,7 +2,7 @@ package dsl
 
 import (
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/slinkydeveloper/kfn/pkg/dsl/component"
 )
 
@@ -32,9 +32,12 @@ func checkAndExpand(wire []string, symbolsTable map[string]component.Component) 
 		}
 		newComponent := prev.Expand(actual)
 		if newComponent != nil {
-			key := uuid.New().String()
-			symbolsTable[key] = newComponent
-			result = append(result, key, wire[i])
+			err := newComponent.Validate()
+			if err != nil {
+				return nil, errors.Wrap(err, "error while expanding to a new component")
+			}
+			symbolsTable[newComponent.K8sName()] = newComponent
+			result = append(result, newComponent.K8sName(), wire[i])
 		} else {
 			result = append(result, wire[i])
 		}

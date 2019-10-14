@@ -1,6 +1,9 @@
 package dsl
 
-import "github.com/slinkydeveloper/kfn/pkg/dsl/component"
+import (
+	log "github.com/sirupsen/logrus"
+	"github.com/slinkydeveloper/kfn/pkg/dsl/component"
+)
 
 func CreateAllWireResources(wires [][]string, parsedSymbols map[string]component.Component) ([]interface{}, error) {
 	resources := make([]interface{}, 0)
@@ -20,7 +23,7 @@ func createWireResources(wire []string, parsedSymbols map[string]component.Compo
 	resources := make([]interface{}, 0)
 	for i, c := range wire {
 		var prev component.Component
-		if i-1 > 0 {
+		if i-1 >= 0 {
 			prev = parsedSymbols[wire[i-1]]
 		}
 		var next component.Component
@@ -28,6 +31,7 @@ func createWireResources(wire []string, parsedSymbols map[string]component.Compo
 			next = parsedSymbols[wire[i+1]]
 		}
 
+		log.Debugf("Generating wire connection %v -> %v -> %v", prev, parsedSymbols[c], next)
 		newResources, err := parsedSymbols[c].GenerateWireConnectionResources(prev, next)
 		if err != nil {
 			return nil, err

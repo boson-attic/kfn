@@ -17,33 +17,70 @@ import (
 type Function struct {
 	functionLocation string
 	options          map[string]string
+	imageName        string
+	serviceName      string
+	imageTag         string
 	functionImage    *image.FunctionImage
+	language         languages.Language
 }
 
 func NewFunction(functionLocation string, options map[string]string) Component {
-	return &Function{functionLocation, options, nil}
+	return &Function{functionLocation: functionLocation, options: options}
 }
 
-func (f Function) Validate() error {
+func (f *Function) K8sName() string {
+	return f.serviceName
+}
+
+func (f *Function) Validate() error {
+	var err error
+	f.functionLocation, err = filepath.Abs(f.functionLocation)
+	if err != nil {
+		return err
+	}
+
 	if !util.FsExist(f.functionLocation) {
 		return fmt.Errorf("Cannot retrieve function %s", f.functionLocation)
 	}
+
+	f.language = languages.GetLanguage(path.Ext(f.functionLocation))
+	if f.language == languages.Unknown {
+		return fmt.Errorf("unknown language for function %s", f.functionLocation)
+	}
+
+	f.imageName = f.options["image_name"]
+	f.serviceName = f.options["service_name"]
+	f.imageTag = f.options["image_tag"]
+
+	if len(f.imageName) == 0 {
+		base := path.Base(f.functionLocation)
+		f.imageName = strings.TrimSuffix(base, path.Ext(base))
+	}
+
+	if len(f.serviceName) == 0 {
+		f.serviceName = f.imageName
+	}
+
 	return nil
 }
 
-func (f Function) Expand(component Component) Component {
+func (f *Function) Expand(component Component) Component {
 	switch component.(type) {
 	case *Function:
-		return NewKafkaChannel("", nil)
+		return defaultExpansionChannelFactory("", nil)
+	case *knativeService:
+		return defaultExpansionChannelFactory("", nil)
 	}
 	return nil
 }
 
-func (f Function) CanConnectTo(component Component) bool {
+func (f *Function) CanConnectTo(component Component) bool {
 	switch component.(type) {
 	case *Function:
 		return true
 	case *kafkaChannel:
+		return true
+	case *knativeService:
 		return true
 	}
 	return false
@@ -52,35 +89,7 @@ func (f Function) CanConnectTo(component Component) bool {
 func (f *Function) Build() error {
 	log.Infof("Starting building %v", f)
 
-	functionPath := f.functionLocation
-	functionPath, err := filepath.Abs(functionPath)
-	if err != nil {
-		return err
-	}
-
-	language := languages.GetLanguage(path.Ext(functionPath))
-	if language == languages.Unknown {
-		return fmt.Errorf("unknown language for function %s", functionPath)
-	}
-
-	imageName := f.options["image_name"]
-	serviceName := f.options["service_name"]
-	imageTag := f.options["image_tag"]
-
-	if len(imageName) == 0 {
-		base := path.Base(functionPath)
-		imageName = strings.TrimSuffix(base, path.Ext(base))
-	}
-
-	if len(serviceName) == 0 {
-		serviceName = imageName
-	}
-
-	f.options["image_name"] = imageName
-	f.options["service_name"] = serviceName
-	f.options["image_tag"] = imageTag
-
-	functionImage, err := pkg.Build(functionPath, language, imageName, imageTag, config.BuildSystemContext)
+	functionImage, err := pkg.Build(f.functionLocation, f.language, f.imageName, f.imageTag, config.BuildSystemContext)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error while trying to build %v", f))
 	}
@@ -91,88 +100,79 @@ func (f *Function) Build() error {
 	return nil
 }
 
-func (f Function) IsValidWireStart() bool {
+func (f *Function) IsValidWireStart() bool {
 	return false
 }
 
-func (f Function) GenerateDeployResources() ([]interface{}, error) {
-	return []interface{}{f.functionImage.ConstructServiceYaml(f.options["service_name"])}, nil
+func (f *Function) GenerateDeployResources() ([]interface{}, error) {
+	return []interface{}{f.functionImage.ConstructServiceYaml(f.serviceName)}, nil
 }
 
-func (f Function) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
+func (f *Function) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
 	switch previous.(type) {
+	case *inMemoryChannel:
+		if next != nil {
+			switch next.(type) {
+			case *kafkaChannel:
+				return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "KafkaChannel")}, nil
+			case *inMemoryChannel:
+				return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "InMemoryChannel")}, nil
+			}
+		} else {
+			return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", "", "")}, nil
+		}
 	case *kafkaChannel:
 		if next != nil {
 			switch next.(type) {
 			case *kafkaChannel:
-				return []interface{}{f.generateChannelToChannelSub(previous.(*kafkaChannel), next.(*kafkaChannel))}, nil
+				return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "KafkaChannel")}, nil
+			case *inMemoryChannel:
+				return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "InMemoryChannel")}, nil
 			}
 		} else {
-			return []interface{}{f.generateChannelSub(previous.(*kafkaChannel))}, nil
+			return []interface{}{f.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", "", "")}, nil
 		}
 	}
 	return []interface{}{}, nil
 }
 
-func (f Function) generateChannelToChannelSub(previousChannel *kafkaChannel, nextChannel *kafkaChannel) map[string]interface{} {
-	serviceName := f.options["service_name"]
+func (f *Function) generateChannelToChannelSub(previousChannelName string, previousChannelType string, nextChannelName string, nextChannelType string) map[string]interface{} {
+	specMap := map[string]interface{}{
+		"channel": map[string]interface{}{
+			"apiVersion": "messaging.knative.dev/v1alpha1",
+			"kind":       previousChannelType,
+			"name":       previousChannelName,
+		},
+		"subscriber": map[string]interface{}{
+			"ref": map[string]interface{}{
+				"apiVersion": "serving.knative.dev/v1alpha1",
+				"kind":       "Service",
+				"name":       f.serviceName,
+			},
+		},
+	}
+
+	if nextChannelName != "" {
+		specMap["reply"] = map[string]interface{}{
+			"channel": map[string]interface{}{
+				"apiVersion": "messaging.knative.dev/v1alpha1",
+				"kind":       nextChannelType,
+				"name":       nextChannelName,
+			},
+		}
+	}
+
 	return map[string]interface{}{
 		"apiVersion": "messaging.knative.dev/v1alpha1",
 		"kind":       "Subscription",
 		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s-%s", previousChannel.name, serviceName, nextChannel.name),
+			"name":      fmt.Sprintf("%s-%s-%s", previousChannelName, f.serviceName, nextChannelName),
 			"namespace": config.Namespace,
 		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "KafkaChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "serving.knative.dev/v1alpha1",
-					"kind":       "Service",
-					"name":       serviceName,
-				},
-			},
-			"reply": map[string]interface{}{
-				"channel": map[string]interface{}{
-					"apiVersion": "messaging.knative.dev/v1alpha1",
-					"kind":       "KafkaChannel",
-					"name":       nextChannel.name,
-				},
-			},
-		},
+		"spec": specMap,
 	}
 }
 
-func (f Function) generateChannelSub(previousChannel *kafkaChannel) map[string]interface{} {
-	serviceName := f.options["service_name"]
-	return map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "Subscription",
-		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s", previousChannel.name, serviceName),
-			"namespace": config.Namespace,
-		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "KafkaChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "serving.knative.dev/v1alpha1",
-					"kind":       "Service",
-					"name":       serviceName,
-				},
-			},
-		},
-	}
-}
-
-func (f Function) String() string {
+func (f *Function) String() string {
 	return fmt.Sprintf("Function '%s'", f.functionLocation)
 }

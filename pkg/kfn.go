@@ -103,7 +103,7 @@ func Build(location string, language languages.Language, imageName string, image
 		return image.FunctionImage{}, err
 	}
 
-	log.Info("Starting build image")
+	log.Infof("Starting build image %s", imageName)
 
 	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles, targetDir)
 }

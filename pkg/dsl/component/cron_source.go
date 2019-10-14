@@ -18,14 +18,20 @@ func NewCronSource(name string, options map[string]string) Component {
 	return &cronSource{name, options}
 }
 
-func (k cronSource) Validate() error {
+func (k cronSource) K8sName() string {
+	return k.name
+}
+
+func (k *cronSource) Validate() error {
 	return nil
 }
 
 func (k cronSource) Expand(component Component) Component {
 	switch component.(type) {
 	case *Function:
-		return NewKafkaChannel("", nil)
+		return defaultExpansionChannelFactory("", nil)
+	case *knativeService:
+		return defaultExpansionChannelFactory("", nil)
 	}
 	return nil
 }
@@ -35,6 +41,8 @@ func (k cronSource) CanConnectTo(component Component) bool {
 	case *Function:
 		return true
 	case *kafkaChannel:
+		return true
+	case *knativeService:
 		return true
 	}
 	return false

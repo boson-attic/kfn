@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/containers/image/types"
 	"github.com/pelletier/go-toml"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
@@ -87,7 +88,8 @@ func (r rustLanguageManager) DownloadRuntimeIfRequired() error {
 }
 
 func (r rustLanguageManager) CheckCompileDependencies() error {
-	return util.CommandsExists("rustc", "cargo")
+	// musl-gcc is required for static linking the libc
+	return util.CommandsExists("rustc", "cargo", "musl-gcc")
 }
 
 func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
@@ -150,9 +152,9 @@ func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[
 
 	var compileCommand *exec.Cmd
 	if devMode {
-		compileCommand = exec.Command("cargo", "build")
+		compileCommand = exec.Command("cargo", "build", "--target", "x86_64-unknown-linux-musl")
 	} else {
-		compileCommand = exec.Command("cargo", "build", "--release")
+		compileCommand = exec.Command("cargo", "build", "--release", "--target", "x86_64-unknown-linux-musl")
 	}
 	// Root Cargo.toml is in runtime dir in runtime
 	compileCommand.Dir = path.Join(targetDirectory, "runtime")
@@ -171,18 +173,18 @@ func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[
 
 	err := compileCommand.Run()
 	if err != nil {
-		return "", nil, err
+		return "", nil, errors.Wrap(err, "error occurred while trying to compile. Check if you installed correctly 'https://www.musl-libc.org/how.html' and musl rustc target with 'rustup target add x86_64-unknown-linux-musl'")
 	}
 
 	if devMode {
-		return path.Join(targetDirectory, "runtime", "target", "debug", "rust-faas"), nil, nil
+		return path.Join(targetDirectory, "runtime", "target", "x86_64-unknown-linux-musl", "debug", "rust-faas"), nil, nil
 	} else {
-		return path.Join(targetDirectory, "runtime", "target", "release", "rust-faas"), nil, nil
+		return path.Join(targetDirectory, "runtime", "target", "x86_64-unknown-linux-musl", "release", "rust-faas"), nil, nil
 	}
 }
 
 func (r rustLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error) {
-	builder, err := util.InitializeBuilder(context.TODO(), systemContext, "registry.access.redhat.com/ubi8/ubi")
+	builder, err := util.InitializeBuilder(context.TODO(), systemContext, "")
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
@@ -191,14 +193,14 @@ func (r rustLanguageManager) BuildImage(systemContext *types.SystemContext, imag
 
 	err = util.Add(
 		builder,
-		util.BuildAdd{From: mainExecutable, To: "/usr/bin"},
+		util.BuildAdd{From: mainExecutable, To: "/"},
 	)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	builder.SetUser("1000")
-	builder.SetCmd([]string{"/usr/bin/rust-faas"})
+	builder.SetCmd([]string{"/rust-faas"})
 	builder.SetEntrypoint([]string{})
 
 	return util.CommitImage(builder, systemContext, imageName, imageTag)

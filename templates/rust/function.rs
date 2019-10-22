@@ -1,11 +1,12 @@
 // kfn:dependency primal 0.2.3
+// kfn:dependency try_future 0.1.3
 
+use cloudevent::{Event, Reader};
 use serde_json::json;
 
 // Function must have this signature
-pub fn function(event: Option<serde_json::Value>) -> impl futures::Future<Item=Option<serde_json::Value>, Error=actix_web::Error> {
-    let input_json = event
-        .unwrap_or(serde_json::Value::Null);
+pub fn function(event: Option<Event>) -> Box<futures::Future<Item=Option<Event>, Error=actix_web::Error>> {
+    let input_json = try_future_box!(event.read_payload()).unwrap_or(serde_json::Value::Null);
     let name = input_json
         .as_object()
         .and_then(|o| o.get("name"))
@@ -17,3 +18,5 @@ pub fn function(event: Option<serde_json::Value>) -> impl futures::Future<Item=O
     });
     futures::finished(Some(json))
 }
+
+//TODO refactror this shitting example

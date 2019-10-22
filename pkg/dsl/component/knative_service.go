@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 	"github.com/slinkydeveloper/kfn/pkg/config"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 )
 
 type knativeService struct {
@@ -23,6 +24,18 @@ func (k *knativeService) K8sName() string {
 	return k.serviceName
 }
 
+func (f *knativeService) K8sApiGroup() string {
+	return SERVING_V1ALPHA1_API_GROUP
+}
+
+func (f *knativeService) K8sKind() string {
+	return "Service"
+}
+
+func (f *knativeService) ComponentType() ComponentType {
+	return Service
+}
+
 func (k *knativeService) Validate() error {
 	if k.options["image"] == "" {
 		return fmt.Errorf("you must specify the image for service '%s'", k.serviceName)
@@ -34,25 +47,14 @@ func (k *knativeService) Validate() error {
 }
 
 func (k *knativeService) Expand(component Component) Component {
-	switch component.(type) {
-	case *Function:
-		return defaultExpansionChannelFactory("", nil)
-	case *knativeService:
+	if component.ComponentType() == Service {
 		return defaultExpansionChannelFactory("", nil)
 	}
 	return nil
 }
 
 func (k *knativeService) CanConnectTo(component Component) bool {
-	switch component.(type) {
-	case *knativeService:
-		return true
-	case *kafkaChannel:
-		return true
-	case *Function:
-		return true
-	}
-	return false
+	return util.AnyOf(component.ComponentType(), Channel, Service)
 }
 
 func (k *knativeService) IsValidWireStart() bool {
@@ -65,8 +67,8 @@ func (k *knativeService) GenerateDeployResources() ([]interface{}, error) {
 
 func (k *knativeService) generateService() interface{} {
 	return map[string]interface{}{
-		"apiVersion": "serving.knative.dev/v1alpha1",
-		"kind":       "Service",
+		"apiVersion": k.K8sApiGroup(),
+		"kind":       k.K8sKind(),
 		"metadata": map[string]string{
 			"name":      k.serviceName,
 			"namespace": config.Namespace,
@@ -84,75 +86,11 @@ func (k *knativeService) generateService() interface{} {
 }
 
 func (k *knativeService) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
-	switch previous.(type) {
-	case *inMemoryChannel:
-		if next != nil {
-			switch next.(type) {
-			case *kafkaChannel:
-				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "KafkaChannel")}, nil
-			case *inMemoryChannel:
-				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", next.K8sName(), "InMemoryChannel")}, nil
-			}
-		} else {
-			return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "InMemoryChannel", "", "")}, nil
-		}
-	case *kafkaChannel:
-		if next != nil {
-			switch next.(type) {
-			case *kafkaChannel:
-				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "KafkaChannel")}, nil
-			case *inMemoryChannel:
-				return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", next.K8sName(), "InMemoryChannel")}, nil
-			}
-		} else {
-			return []interface{}{k.generateChannelToChannelSub(previous.K8sName(), "KafkaChannel", "", "")}, nil
-		}
+	// Previous can't be null because ksvc is not a valid wire start
+	if previous.ComponentType() == Channel && (next == nil || next.ComponentType() == Channel) {
+		return []interface{}{generateChannelToChannelSub(previous, k, next)}, nil
 	}
 	return []interface{}{}, nil
-}
-
-func (f *knativeService) generateChannelToChannelSub(previousChannelName string, previousChannelType string, nextChannelName string, nextChannelType string) map[string]interface{} {
-	specMap := map[string]interface{}{
-		"channel": map[string]interface{}{
-			"apiVersion": "messaging.knative.dev/v1alpha1",
-			"kind":       previousChannelType,
-			"name":       previousChannelName,
-		},
-		"subscriber": map[string]interface{}{
-			"ref": map[string]interface{}{
-				"apiVersion": "serving.knative.dev/v1alpha1",
-				"kind":       "Service",
-				"name":       f.serviceName,
-			},
-		},
-	}
-
-	if nextChannelName != "" {
-		specMap["reply"] = map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       nextChannelType,
-				"name":       nextChannelName,
-			},
-		}
-	}
-
-	var subName string
-	if nextChannelName != "" {
-		subName = fmt.Sprintf("%s-%s-%s", previousChannelName, f.serviceName, nextChannelName)
-	} else {
-		subName = fmt.Sprintf("%s-%s", previousChannelName, f.serviceName)
-	}
-
-	return map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "Subscription",
-		"metadata": map[string]interface{}{
-			"name":      subName,
-			"namespace": config.Namespace,
-		},
-		"spec": specMap,
-	}
 }
 
 func (k *knativeService) String() string {

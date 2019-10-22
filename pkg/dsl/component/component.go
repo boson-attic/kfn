@@ -2,8 +2,25 @@ package component
 
 var anonymousCounter uint
 
+type ComponentType uint
+
+const (
+	Channel ComponentType = iota
+	Service
+	Source
+)
+
+const (
+	SOURCES_v1ALPHA1_API_GROUP   = "sources.eventing.knative.dev/v1alpha1"
+	MESSAGING_V1ALPHA1_API_GROUP = "messaging.knative.dev/v1alpha1"
+	SERVING_V1ALPHA1_API_GROUP   = "serving.knative.dev/v1alpha1"
+)
+
 type Component interface {
 	K8sName() string
+	K8sApiGroup() string
+	K8sKind() string
+	ComponentType() ComponentType
 	Validate() error
 	CanConnectTo(component Component) bool
 	IsValidWireStart() bool
@@ -31,3 +48,11 @@ func ResolveComponentFactory(t string) func(string, map[string]string) Component
 }
 
 var defaultExpansionChannelFactory = NewInMemoryChannel
+
+func generateRef(component Component) map[string]string {
+	return map[string]string{
+		"apiVersion": component.K8sApiGroup(),
+		"kind":       component.K8sKind(),
+		"name":       component.K8sName(),
+	}
+}

@@ -55,3 +55,7 @@ func runFlags(cmd *cobra.Command) {
 	stringFlagWithBind(cmd.Flags(), config.KUBECONFIG, "", "", "Kubeconfig")
 	stringFlagWithBind(cmd.Flags(), config.NAMESPACE, "n", "default", "K8s namespace where to run the service")
 }
+
+func dslFlags(cmd *cobra.Command) {
+
+}

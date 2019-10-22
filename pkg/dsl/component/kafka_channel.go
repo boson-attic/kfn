@@ -3,6 +3,7 @@ package component
 import (
 	"fmt"
 	"github.com/slinkydeveloper/kfn/pkg/config"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 )
 
 type kafkaChannel struct {
@@ -18,40 +19,42 @@ func NewKafkaChannel(name string, options map[string]string) Component {
 	return &kafkaChannel{name, options}
 }
 
-func (k kafkaChannel) K8sName() string {
+func (k *kafkaChannel) K8sName() string {
 	return k.name
+}
+
+func (k *kafkaChannel) K8sApiGroup() string {
+	return MESSAGING_V1ALPHA1_API_GROUP
+}
+
+func (k *kafkaChannel) K8sKind() string {
+	return "KafkaChannel"
+}
+
+func (k *kafkaChannel) ComponentType() ComponentType {
+	return Channel
 }
 
 func (k *kafkaChannel) Validate() error {
 	return nil
 }
 
-func (k kafkaChannel) Expand(component Component) Component {
+func (k *kafkaChannel) Expand(component Component) Component {
 	return nil
 }
 
-func (k kafkaChannel) CanConnectTo(component Component) bool {
-	switch component.(type) {
-	case *Function:
-		return true
-	case *inMemoryChannel:
-		return true
-	case *kafkaChannel:
-		return true
-	case *knativeService:
-		return true
-	}
-	return false
+func (k *kafkaChannel) CanConnectTo(component Component) bool {
+	return util.AnyOf(component.ComponentType(), Channel, Service)
 }
 
-func (k kafkaChannel) IsValidWireStart() bool {
+func (k *kafkaChannel) IsValidWireStart() bool {
 	return true
 }
 
-func (k kafkaChannel) GenerateDeployResources() ([]interface{}, error) {
+func (k *kafkaChannel) GenerateDeployResources() ([]interface{}, error) {
 	kch := map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "KafkaChannel",
+		"apiVersion": k.K8sApiGroup(),
+		"kind":       k.K8sKind(),
 		"metadata": map[string]interface{}{
 			"name":      k.name,
 			"namespace": config.Namespace,
@@ -64,68 +67,13 @@ func (k kafkaChannel) GenerateDeployResources() ([]interface{}, error) {
 	return []interface{}{kch}, nil
 }
 
-func (k kafkaChannel) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
-	if previous != nil {
-		switch previous.(type) {
-		case *inMemoryChannel:
-			return []interface{}{k.generateIMChannelSub(previous.(*inMemoryChannel))}, nil
-		case *kafkaChannel:
-			return []interface{}{k.generateKafkaChannelSub(previous.(*kafkaChannel))}, nil
-		}
+func (k *kafkaChannel) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
+	if previous != nil && previous.ComponentType() == Channel {
+		return []interface{}{generateChannelToChannelSub(previous, k, nil)}, nil
 	}
 	return []interface{}{}, nil
 }
 
-func (k kafkaChannel) generateKafkaChannelSub(previousChannel *kafkaChannel) map[string]interface{} {
-	return map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "Subscription",
-		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s", previousChannel.name, k.name),
-			"namespace": config.Namespace,
-		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "KafkaChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "messaging.knative.dev/v1alpha1",
-					"kind":       "InMemoryChannel",
-					"name":       k.name,
-				},
-			},
-		},
-	}
-}
-
-func (k kafkaChannel) generateIMChannelSub(previousChannel *inMemoryChannel) map[string]interface{} {
-	return map[string]interface{}{
-		"apiVersion": "messaging.knative.dev/v1alpha1",
-		"kind":       "Subscription",
-		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s", previousChannel.name, k.name),
-			"namespace": config.Namespace,
-		},
-		"spec": map[string]interface{}{
-			"channel": map[string]interface{}{
-				"apiVersion": "messaging.knative.dev/v1alpha1",
-				"kind":       "InMemoryChannel",
-				"name":       previousChannel.name,
-			},
-			"subscriber": map[string]interface{}{
-				"ref": map[string]interface{}{
-					"apiVersion": "messaging.knative.dev/v1alpha1",
-					"kind":       "InMemoryChannel",
-					"name":       k.name,
-				},
-			},
-		},
-	}
-}
-
-func (k kafkaChannel) String() string {
+func (k *kafkaChannel) String() string {
 	return fmt.Sprintf("Kafka channel '%s'", k.name)
 }

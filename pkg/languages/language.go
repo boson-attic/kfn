@@ -15,6 +15,10 @@ func (l Language) CheckCompileDependencies() error {
 	return ResolveLanguageManager(l).CheckCompileDependencies()
 }
 
+func (l Language) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
+	return ResolveLanguageManager(l).UnitTest(mainFile, functionConfiguration, targetDirectory)
+}
+
 func (l Language) Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (string, []string, error) {
 	return ResolveLanguageManager(l).Compile(mainFile, functionConfiguration, targetDirectory)
 }

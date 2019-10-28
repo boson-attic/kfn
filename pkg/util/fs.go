@@ -29,6 +29,14 @@ func DirExist(p ...string) bool {
 	}
 }
 
+func UnitTestFile(fileLocation string) string {
+	dir, file := filepath.Split(fileLocation)
+	fileParts := strings.Split(file, ".")
+	fileParts[0] = fileParts[0] + "_test"
+
+	return path.Join(dir, strings.Join(fileParts, "."))
+}
+
 func FsExist(p ...string) bool {
 	if _, err := os.Stat(path.Join(p...)); os.IsNotExist(err) {
 		return false

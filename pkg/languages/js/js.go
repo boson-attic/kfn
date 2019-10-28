@@ -22,6 +22,10 @@ type jsLanguageManager struct {
 	resourceLoader util.ResourceLoader
 }
 
+func (r jsLanguageManager) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
+	panic("implement me")
+}
+
 func NewJsLanguageManger() languages.LanguageManager {
 	return jsLanguageManager{util.NewResourceLoader("../../templates/js")}
 }

@@ -108,6 +108,63 @@ func Build(location string, language languages.Language, imageName string, image
 	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles, targetDir)
 }
 
+// Build function handles the different build steps:
+// 1. Calculate and create target dir and runtime dir if not existing
+// 2. Resolve the runtime manager
+// 3. Download required runtime files if needed
+// 4. Resolve the compiler manager
+// 5. Check if compile dependencies are available (compiler, libraries, etc)
+// 6. Download on the local filesystem the function if remote
+// 7. Run compilation and output the files to move on the image
+// 8. Resolve image builder
+// 9. Build image and return the image id
+func Test(location string, language languages.Language) error {
+	targetDir := config.GetTargetDir(location)
+
+	err := util.MkdirpIfNotExists(targetDir)
+	if err != nil {
+		return err
+	}
+
+	err = util.MkdirpIfNotExists(config.RuntimeDir)
+	if err != nil {
+		return err
+	}
+
+	err = language.DownloadRuntimeIfRequired()
+	if err != nil {
+		return err
+	}
+
+	err = language.CheckCompileDependencies()
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Retrieving function configuration")
+
+	functionConfiguration, err := util.ParseConfigComments(languages.GetLineComment(language), location)
+	if err != nil {
+		return err
+	}
+
+	// Log only if needed
+	if config.Verbose {
+		for k, v := range functionConfiguration {
+			log.Infof("Configuration entry %s: %s", k, v)
+		}
+	}
+
+	log.Info("Configuring target directory")
+
+	err = language.ConfigureTargetDirectory(location, functionConfiguration, targetDir)
+	if err != nil {
+		return err
+	}
+
+	return language.UnitTest(location, functionConfiguration, targetDir)
+}
+
 func downloadFunctionFromHTTP(remote, extension string) (string, error) {
 	f, err := ioutil.TempFile("", fmt.Sprintf("*.%d", extension))
 	if err != nil {

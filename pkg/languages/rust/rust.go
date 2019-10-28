@@ -24,6 +24,7 @@ import (
 const (
 	rustRuntimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-rust-runtime/archive/master.zip"
 	buildEnvVariables    = "build-env"
+	testEnvVariables     = "test-env"
 	buildDevProfile      = "build-dev"
 )
 
@@ -111,6 +112,20 @@ func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, function
 		return "", err
 	}
 
+	// Configure test file
+	testFile := util.UnitTestFile(mainFile)
+	if util.FsExist(testFile) {
+		err = util.MkdirpIfNotExists(path.Join(editingDirectory, "tests"))
+		if err != nil {
+			return "", err
+		}
+
+		err := util.Link(testFile, path.Join(editingDirectory, "tests", "lib_test.rs"))
+		if err != nil {
+			return "", err
+		}
+	}
+
 	return editingDirectory, nil
 }
 func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
@@ -133,7 +148,55 @@ func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, functionC
 		return err
 	}
 
+	// Configure test file
+	testFile := util.UnitTestFile(mainFile)
+	if util.FsExist(testFile) {
+		err = util.MkdirpIfNotExists(path.Join(targetDirectory, "function", "tests"))
+		if err != nil {
+			return err
+		}
+
+		err := util.Copy(testFile, path.Join(targetDirectory, "function", "tests", "lib_test.rs"))
+		if err != nil {
+			return err
+		}
+	}
+
 	return util.CopyContent(runtimeDirectory(), path.Join(targetDirectory, "runtime"))
+}
+
+func (r rustLanguageManager) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
+	var testCommand = exec.Command("cargo", "test", "--target", "x86_64-unknown-linux-musl")
+
+	// Root Cargo.toml is in runtime dir in runtime
+	testCommand.Dir = path.Join(targetDirectory, "function")
+	// Configure proper logging
+	testCommand.Stdout = config.GetLoggerWriter()
+	testCommand.Stderr = config.GetLoggerWriter()
+	testCommand.Env = os.Environ()
+
+	buildEnvFlags, ok := functionConfiguration[buildEnvVariables]
+	if ok {
+		for _, env := range buildEnvFlags {
+			log.Printf("Adding env variable to cargo test: %s", env)
+			testCommand.Env = append(testCommand.Env, env)
+		}
+	}
+
+	testEnvFlags, ok := functionConfiguration[testEnvVariables]
+	if ok {
+		for _, env := range testEnvFlags {
+			log.Printf("Adding env variable to cargo test: %s", env)
+			testCommand.Env = append(testCommand.Env, env)
+		}
+	}
+
+	err := testCommand.Run()
+	if err != nil {
+		return errors.Wrap(err, "error occurred while testing function")
+	}
+
+	return nil
 }
 
 func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (string, []string, error) {

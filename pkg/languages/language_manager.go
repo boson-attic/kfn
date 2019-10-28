@@ -18,8 +18,11 @@ type LanguageManager interface {
 	// Configure a temp directory with symlinks required to edit the file
 	ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (directory string, err error)
 
-	// Configure target directory
+	// Configure target directory with main file and eventual test file
 	ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error
+
+	// Run unit tests
+	UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error
 
 	// Compile with Main input file, returns executable + additional files to copy
 	Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (mainExecutable string, additionalFiles []string, err error)

@@ -7,8 +7,9 @@ import (
 )
 
 type cronSource struct {
-	name    string
-	options map[string]string
+	name                     string
+	options                  map[string]string
+	componentOutboundChannel Component
 }
 
 func NewCronSource(name string, options map[string]string) Component {
@@ -16,7 +17,7 @@ func NewCronSource(name string, options map[string]string) Component {
 		name = fmt.Sprintf("cron-source-kfn-generated-%d", anonymousCounter)
 		anonymousCounter++
 	}
-	return &cronSource{name, options}
+	return &cronSource{name: name, options: options}
 }
 
 func (k *cronSource) K8sName() string {
@@ -36,6 +37,8 @@ func (k *cronSource) ComponentType() ComponentType {
 }
 
 func (k *cronSource) Validate() error {
+	k.componentOutboundChannel = defaultExpansionChannelFactory(fmt.Sprintf("%s-outbound-ch", k.name), nil)
+
 	return nil
 }
 
@@ -55,25 +58,31 @@ func (k *cronSource) IsValidWireStart() bool {
 }
 
 func (k *cronSource) GenerateDeployResources() ([]interface{}, error) {
-	return []interface{}{}, nil
-}
+	ch, err := k.componentOutboundChannel.GenerateDeployResources()
+	if err != nil {
+		return nil, err
+	}
 
-func (k *cronSource) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
-	// Next Resource is a channel by expansion rules
 	s := map[string]interface{}{
 		"apiVersion": k.K8sApiGroup(),
 		"kind":       k.K8sKind(),
 		"metadata": map[string]interface{}{
-			"name":      fmt.Sprintf("%s-%s", k.name, next.K8sName()),
+			"name":      fmt.Sprintf("%s", k.name),
 			"namespace": config.Namespace,
 		},
 		"spec": map[string]interface{}{
 			"schedule": k.options["schedule"],
 			"data":     k.options["data"],
-			"sink":     generateRef(next),
+			"sink":     generateRef(k.componentOutboundChannel),
 		},
 	}
-	return []interface{}{s}, nil
+
+	return append(ch, s), nil
+}
+
+func (k *cronSource) GenerateWireConnectionResources(previous Component, next Component) ([]interface{}, error) {
+	// Next Resource is a channel by expansion rules, previous is nil
+	return []interface{}{generateChannelToChannelSub(k.componentOutboundChannel, k, next)}, nil
 }
 
 func (k *cronSource) String() string {

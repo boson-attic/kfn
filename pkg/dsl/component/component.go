@@ -37,6 +37,8 @@ func ResolveComponentFactory(t string) func(string, map[string]string) Component
 		return NewKafkaChannel
 	case "CronSource":
 		return NewCronSource
+	case "KafkaSource":
+		return NewKafkaSource
 	case "KService":
 		return NewKnativeService
 	case "KnativeService":

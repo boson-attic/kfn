@@ -3,7 +3,6 @@ package util
 import (
 	"archive/zip"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"os/exec"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func FileExist(p ...string) bool {

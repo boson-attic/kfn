@@ -17,14 +17,15 @@ package cmd
 
 import (
 	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/containers/buildah/pkg/unshare"
 	"github.com/slinkydeveloper/kfn/pkg"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
-	"path"
-	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 

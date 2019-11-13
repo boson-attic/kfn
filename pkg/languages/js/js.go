@@ -22,40 +22,40 @@ type jsLanguageManager struct {
 	resourceLoader util.ResourceLoader
 }
 
+// NewJsLanguageManger returns a new instance of a jsLanguageManager
 func NewJsLanguageManger() languages.LanguageManager {
 	return jsLanguageManager{util.NewResourceLoader("../../templates/js")}
 }
 
-func (r jsLanguageManager) Bootstrap(functionName string, targetDirectory string) error {
+func (j jsLanguageManager) Bootstrap(functionName string, targetDirectory string) error {
 	err := util.MkdirpIfNotExists(targetDirectory)
 	if err != nil {
 		return err
 	}
 
-	main, err := r.resourceLoader.LoadResource("index.js")
+	main, err := j.resourceLoader.LoadResource("index.js")
 	if err != nil {
 		return err
 	}
 
 	return util.WriteFiles(
 		targetDirectory,
-		util.WriteDest{fmt.Sprintf("%s.js", functionName), main},
+		util.WriteDest{Filename: fmt.Sprintf("%s.js", functionName), Data: main},
 	)
 }
 
-// For JS Runtime nothing is required, since the building atm is done directly in the container
+// CheckCompileDependencies always returns nil for Node.js
 func (j jsLanguageManager) CheckCompileDependencies() error {
 	return nil
 }
 
 func (j jsLanguageManager) Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (string, []string, error) {
 	dir, _ := path.Split(mainFile)
-	packageJson := path.Join(dir, "package.json")
-	if util.FsExist(packageJson) {
-		return mainFile, []string{packageJson}, nil
-	} else {
-		return mainFile, []string{}, nil
+	packageJSON := path.Join(dir, "package.json")
+	if util.FsExist(packageJSON) {
+		return mainFile, []string{packageJSON}, nil
 	}
+	return mainFile, []string{}, nil
 }
 
 func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error) {
@@ -100,12 +100,9 @@ func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionCo
 		return "", err
 	}
 
-	packageJson, err := generatePackageJson(functionConfiguration)
-	if err != nil {
-		return "", err
-	}
-
-	err = util.WriteFiles(editingDirectory, util.WriteDest{Filename: "package.json", Data: packageJson})
+	packageJSONFile := path.Join(path.Dir(mainFile), "package.json")
+	packageJSONLink := path.Join(editingDirectory, "package.json")
+	err = util.Link(packageJSONFile, packageJSONLink)
 	if err != nil {
 		return "", err
 	}
@@ -118,19 +115,29 @@ func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, functionCon
 		return err
 	}
 
+	// Copy the user function file to the target directory
 	err := util.Copy(mainFile, path.Join(targetDirectory, "usr", "index.js"))
 	if err != nil {
 		return err
 	}
 
-	packageJson, err := generatePackageJson(functionConfiguration)
-	if err != nil {
-		return err
-	}
-
-	err = util.WriteFiles(path.Join(targetDirectory, "usr"), util.WriteDest{Filename: "package.json", Data: packageJson})
-	if err != nil {
-		return err
+	// If a user package.json file exists, copy it.
+	packageJSONFile := path.Join(path.Dir(mainFile), "package.json")
+	if util.FileExist(packageJSONFile) {
+		err = util.Copy(packageJSONFile, path.Join(targetDirectory, "usr", "package.json"))
+		if err != nil {
+			return err
+		}
+	} else {
+		// No user package.json exists. Generate one.
+		packageJSONData, err := generatePackageJSON(functionConfiguration)
+		if err != nil {
+			return err
+		}
+		err = util.WriteFiles(path.Join(targetDirectory, "usr"), util.WriteDest{Filename: "package.json", Data: packageJSONData})
+		if err != nil {
+			return err
+		}
 	}
 
 	return util.Copy(runtimeDirectory(), path.Join(targetDirectory, "src"))
@@ -140,7 +147,7 @@ func runtimeDirectory() string {
 	return path.Join(config.RuntimeDir, "js")
 }
 
-func generatePackageJson(configurationEntries map[string][]string) ([]byte, error) {
+func generatePackageJSON(configurationEntries map[string][]string) ([]byte, error) {
 	root := make(map[string]interface{})
 
 	root["name"] = "function"

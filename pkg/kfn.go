@@ -2,17 +2,18 @@ package pkg
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/containers/image/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
-	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 func init() {
@@ -103,7 +104,7 @@ func Build(location string, language languages.Language, imageName string, image
 		return image.FunctionImage{}, err
 	}
 
-	log.Info("Starting build image")
+	log.Infof("Building image %s\n", imageName)
 
 	return languageManager.BuildImage(systemContext, imageName, imageTag, compiledOutput, additionalFiles, targetDir)
 }

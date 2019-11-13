@@ -4,60 +4,61 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"strings"
+
 	"github.com/containers/image/types"
 	"github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
-	"io/ioutil"
-	"path"
-	"strings"
 )
 
 const (
 	baseImage          = "node:12-alpine"
-	jsRuntimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-js-runtime-image/archive/master.zip"
+	jsRuntimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-js-runtime/archive/master.zip"
 )
 
 type jsLanguageManager struct {
 	resourceLoader util.ResourceLoader
 }
 
+// NewJsLanguageManger returns a new instance of a jsLanguageManager
 func NewJsLanguageManger() languages.LanguageManager {
 	return jsLanguageManager{util.NewResourceLoader("../../templates/js")}
 }
 
-func (r jsLanguageManager) Bootstrap(functionName string, targetDirectory string) error {
+func (j jsLanguageManager) Bootstrap(functionName string, targetDirectory string) error {
 	err := util.MkdirpIfNotExists(targetDirectory)
 	if err != nil {
 		return err
 	}
 
-	main, err := r.resourceLoader.LoadResource("index.js")
+	main, err := j.resourceLoader.LoadResource("index.js")
 	if err != nil {
 		return err
 	}
 
 	return util.WriteFiles(
 		targetDirectory,
-		util.WriteDest{fmt.Sprintf("%s.js", functionName), main},
+		util.WriteDest{Filename: fmt.Sprintf("%s.js", functionName), Data: main},
 	)
 }
 
-// For JS Runtime nothing is required, since the building atm is done directly in the container
+// CheckCompileDependencies always returns nil for Node.js
 func (j jsLanguageManager) CheckCompileDependencies() error {
 	return nil
 }
 
 func (j jsLanguageManager) Compile(mainFile string, functionConfiguration map[string][]string, targetDirectory string) (string, []string, error) {
 	dir, _ := path.Split(mainFile)
-	packageJson := path.Join(dir, "package.json")
-	if util.FsExist(packageJson) {
-		return mainFile, []string{packageJson}, nil
-	} else {
-		return mainFile, []string{}, nil
+	packageJSON := path.Join(dir, "package.json")
+	if util.FsExist(packageJSON) {
+		return mainFile, []string{packageJSON}, nil
 	}
+	return mainFile, []string{}, nil
 }
 
 func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageName string, imageTag string, mainExecutable string, additionalFiles []string, targetDirectory string) (image.FunctionImage, error) {
@@ -78,8 +79,8 @@ func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageN
 		util.BuildCommand{Command: "mkdir -p /home/node/usr/.npm"},
 		util.BuildCommand{Command: "chmod -R a+g+x /home/node/usr"},
 		util.BuildCommand{Command: "chmod -R a+g+x /home/node/src"},
-		util.BuildCommand{"npm install", "/home/node/usr"},
-		util.BuildCommand{"npm install", "/home/node/src"},
+		util.BuildCommand{Command: "npm install", Wd: "/home/node/usr"},
+		util.BuildCommand{Command: "npm install", Wd: "/home/node/src"},
 	)
 	if err != nil {
 		return image.FunctionImage{}, err
@@ -100,7 +101,7 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 			return err
 		}
 
-		tempDir, err := ioutil.TempDir("", "faas-js-runtime-image")
+		tempDir, err := ioutil.TempDir("", "faas-js-runtime")
 		if err != nil {
 			return err
 		}
@@ -119,7 +120,7 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 
 		logrus.Infof("Runtime unzipped to %s", tempDir)
 
-		if err := util.CopyContent(path.Join(tempDir, "faas-js-runtime-image-master", "src"), runtimeDirectory()); err != nil {
+		if err := util.CopyContent(path.Join(tempDir, "faas-js-runtime-master"), runtimeDirectory()); err != nil {
 			return err
 		}
 
@@ -130,19 +131,20 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 	return nil
 }
 
-func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
+// ConfigureEditingDirectory does something
+func (j jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
 	functionFile := path.Join(editingDirectory, "index.js")
 	err := util.Link(mainFile, functionFile)
 	if err != nil {
 		return "", "", err
 	}
 
-	packageJson, err := generatePackageJson(functionConfiguration)
+	packageJSON, err := generatePackageJSON(functionConfiguration)
 	if err != nil {
 		return "", "", err
 	}
 
-	err = util.WriteFiles(editingDirectory, util.WriteDest{Filename: "package.json", Data: packageJson})
+	err = util.WriteFiles(editingDirectory, util.WriteDest{Filename: "package.json", Data: packageJSON})
 	if err != nil {
 		return "", "", err
 	}
@@ -160,12 +162,12 @@ func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, functionCon
 		return err
 	}
 
-	packageJson, err := generatePackageJson(functionConfiguration)
+	packageJSON, err := generatePackageJSON(functionConfiguration)
 	if err != nil {
 		return err
 	}
 
-	err = util.WriteFiles(path.Join(targetDirectory, "usr"), util.WriteDest{Filename: "package.json", Data: packageJson})
+	err = util.WriteFiles(path.Join(targetDirectory, "usr"), util.WriteDest{Filename: "package.json", Data: packageJSON})
 	if err != nil {
 		return err
 	}
@@ -177,7 +179,7 @@ func runtimeDirectory() string {
 	return path.Join(config.RuntimeDir, "js")
 }
 
-func generatePackageJson(configurationEntries map[string][]string) ([]byte, error) {
+func generatePackageJSON(configurationEntries map[string][]string) ([]byte, error) {
 	root := make(map[string]interface{})
 
 	root["name"] = "function"

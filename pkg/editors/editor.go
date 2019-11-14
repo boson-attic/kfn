@@ -2,9 +2,10 @@ package editors
 
 import (
 	"fmt"
-	"github.com/slinkydeveloper/kfn/pkg/util"
 	"os/exec"
+
 	log "github.com/sirupsen/logrus"
+	"github.com/slinkydeveloper/kfn/pkg/util"
 )
 
 type Editor uint8
@@ -27,7 +28,7 @@ func GetEditor(editor string) Editor {
 	return Unknown
 }
 
-func (e Editor) OpenEditor(directory string, descriptorFilename string) error {
+func (e Editor) OpenEditor(directory string) error {
 	switch e {
 	case Idea:
 		return startEditorProcess(directory, "idea", directory)

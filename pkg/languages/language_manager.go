@@ -16,7 +16,7 @@ type LanguageManager interface {
 	DownloadRuntimeIfRequired() error
 
 	// Configure a temp directory with symlinks required to edit the file
-	ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (directory string, descriptorFilename string, err error)
+	ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (directory string, err error)
 
 	// Configure target directory
 	ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error

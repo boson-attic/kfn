@@ -23,7 +23,7 @@ func (l Language) DownloadRuntimeIfRequired() error {
 	return ResolveLanguageManager(l).DownloadRuntimeIfRequired()
 }
 
-func (l Language) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
+func (l Language) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, error) {
 	return ResolveLanguageManager(l).ConfigureEditingDirectory(mainFile, functionConfiguration, editingDirectory)
 }
 

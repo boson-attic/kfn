@@ -3,6 +3,13 @@ package rust
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path"
+	"strconv"
+	"strings"
+
 	"github.com/containers/image/types"
 	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
@@ -12,12 +19,6 @@ import (
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
-	"io/ioutil"
-	"os"
-	"os/exec"
-	"path"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -92,25 +93,25 @@ func (r rustLanguageManager) CheckCompileDependencies() error {
 	return util.CommandsExists("rustc", "cargo", "musl-gcc")
 }
 
-func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
+func (r rustLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, error) {
 	functionFile := path.Join(editingDirectory, "lib.rs")
 
 	cargoToml, err := generateCargoToml(functionConfiguration)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	err = util.WriteFiles(editingDirectory, util.WriteDest{Filename: "Cargo.toml", Data: cargoToml})
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	err = util.Link(mainFile, functionFile)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return editingDirectory, path.Join(editingDirectory, "Cargo.toml"), nil
+	return editingDirectory, nil
 }
 func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
 	if err := util.MkdirpIfNotExists(path.Join(targetDirectory, "function")); err != nil {

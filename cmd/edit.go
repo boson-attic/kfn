@@ -17,13 +17,14 @@ package cmd
 
 import (
 	"fmt"
+	"path"
+	"path/filepath"
+
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/editors"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
 	"github.com/spf13/cobra"
-	"path"
-	"path/filepath"
 )
 
 // editCmd represents the edit command
@@ -67,12 +68,12 @@ func editCmdFn(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	directory, descriptorFilename, err := language.ConfigureEditingDirectory(functionPath, functionConfiguration, editingDir)
+	directory, err := language.ConfigureEditingDirectory(functionPath, functionConfiguration, editingDir)
 	if err != nil {
 		return err
 	}
 
-	err = ed.OpenEditor(directory, descriptorFilename)
+	err = ed.OpenEditor(directory)
 	if err != nil {
 		return err
 	}

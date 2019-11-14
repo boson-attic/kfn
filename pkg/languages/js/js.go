@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"strings"
+
 	"github.com/containers/image/types"
 	"github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
 	"github.com/slinkydeveloper/kfn/pkg/util"
-	"io/ioutil"
-	"path"
-	"strings"
 )
 
 const (
@@ -130,24 +131,24 @@ func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
 	return nil
 }
 
-func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, string, error) {
+func (r jsLanguageManager) ConfigureEditingDirectory(mainFile string, functionConfiguration map[string][]string, editingDirectory string) (string, error) {
 	functionFile := path.Join(editingDirectory, "index.js")
 	err := util.Link(mainFile, functionFile)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	packageJson, err := generatePackageJson(functionConfiguration)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	err = util.WriteFiles(editingDirectory, util.WriteDest{Filename: "package.json", Data: packageJson})
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return editingDirectory, path.Join(editingDirectory, "package.json"), nil
+	return editingDirectory, nil
 }
 
 func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {

@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"path"
 	"strings"
 
 	"github.com/containers/image/types"
-	"github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
@@ -17,8 +15,7 @@ import (
 )
 
 const (
-	baseImage          = "node:12-alpine"
-	jsRuntimeRemoteZip = "https://github.com/openshift-cloud-functions/faas-js-runtime-image/archive/master.zip"
+	baseImage = "oscf/js-runtime:0.0.2"
 )
 
 type jsLanguageManager struct {
@@ -69,25 +66,21 @@ func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageN
 
 	builder.SetPort("8080")
 
-	err = util.Add(builder, util.BuildAdd{From: path.Join(targetDirectory, "src"), To: "/home/node/src"}, util.BuildAdd{From: path.Join(targetDirectory, "usr"), To: "/home/node/usr"})
+	err = util.Add(builder, util.BuildAdd{From: path.Join(targetDirectory, "usr"), To: "/home/node/usr"})
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	err = util.RunCommands(
 		builder,
-		util.BuildCommand{Command: "mkdir -p /home/node/usr/.npm"},
-		util.BuildCommand{Command: "chmod -R a+g+x /home/node/usr"},
-		util.BuildCommand{Command: "chmod -R a+g+x /home/node/src"},
-		util.BuildCommand{"npm install", "/home/node/usr"},
-		util.BuildCommand{"npm install", "/home/node/src"},
+		util.BuildCommand{Command: "npm install", Wd: "/home/node/usr"},
 	)
 	if err != nil {
 		return image.FunctionImage{}, err
 	}
 
 	builder.SetEnv("HOME", "/home/node/usr")
-	builder.SetUser("1000")
+	builder.SetUser("1001")
 	builder.SetWorkDir("/home/node/src")
 
 	builder.SetCmd([]string{"node", "/home/node/src/index.js"})
@@ -95,39 +88,8 @@ func (j jsLanguageManager) BuildImage(systemContext *types.SystemContext, imageN
 	return util.CommitImage(builder, systemContext, imageName, imageTag)
 }
 
+// DownloadRuntimeIfRequired is not used in the Node.js runtime
 func (j jsLanguageManager) DownloadRuntimeIfRequired() error {
-	if !util.FsExist(runtimeDirectory()) {
-		if err := util.MkdirpIfNotExists(config.RuntimeDir); err != nil {
-			return err
-		}
-
-		tempDir, err := ioutil.TempDir("", "faas-js-runtime-image")
-		if err != nil {
-			return err
-		}
-
-		runtimeZip := path.Join(tempDir, "master.zip")
-
-		if err := util.DownloadFile(jsRuntimeRemoteZip, runtimeZip); err != nil {
-			return err
-		}
-
-		logrus.Infof("Downloading runtime from %s to %s", jsRuntimeRemoteZip, runtimeZip)
-
-		if _, err := util.Unzip(runtimeZip, tempDir); err != nil {
-			return err
-		}
-
-		logrus.Infof("Runtime unzipped to %s", tempDir)
-
-		if err := util.CopyContent(path.Join(tempDir, "faas-js-runtime-image-master", "src"), runtimeDirectory()); err != nil {
-			return err
-		}
-
-		logrus.Infof("Copied runtime to %s", runtimeDirectory())
-	} else {
-		logrus.Infof("Using runtime cached in %s", runtimeDirectory())
-	}
 	return nil
 }
 

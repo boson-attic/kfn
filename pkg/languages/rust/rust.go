@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"os/exec"
 	"path"
 	"strconv"
 	"strings"
@@ -15,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
@@ -166,32 +165,12 @@ func (r rustLanguageManager) ConfigureTargetDirectory(mainFile string, functionC
 }
 
 func (r rustLanguageManager) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
-	var testCommand = exec.Command("cargo", "test", "--target", "x86_64-unknown-linux-musl")
-
-	// Root Cargo.toml is in runtime dir in runtime
-	testCommand.Dir = path.Join(targetDirectory, "function")
-	// Configure proper logging
-	testCommand.Stdout = config.GetLoggerWriter()
-	testCommand.Stderr = config.GetLoggerWriter()
-	testCommand.Env = os.Environ()
-
-	buildEnvFlags, ok := functionConfiguration[buildEnvVariables]
-	if ok {
-		for _, env := range buildEnvFlags {
-			log.Printf("Adding env variable to cargo test: %s", env)
-			testCommand.Env = append(testCommand.Env, env)
-		}
-	}
-
-	testEnvFlags, ok := functionConfiguration[testEnvVariables]
-	if ok {
-		for _, env := range testEnvFlags {
-			log.Printf("Adding env variable to cargo test: %s", env)
-			testCommand.Env = append(testCommand.Env, env)
-		}
-	}
-
-	err := testCommand.Run()
+	err := util.RunCommand(
+		"cargo",
+		[]string{"test", "--target", "x86_64-unknown-linux-musl"},
+		path.Join(targetDirectory, "function"),
+		functionConfiguration[buildEnvVariables], functionConfiguration[testEnvVariables],
+	)
 	if err != nil {
 		return errors.Wrap(err, "error occurred while testing function")
 	}
@@ -212,30 +191,16 @@ func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[
 		}
 	}
 
-	log.Printf("Using cargo dev profile: %v", devMode)
+	log.Debugf("Using cargo dev profile: %v", devMode)
 
-	var compileCommand *exec.Cmd
+	var args []string
 	if devMode {
-		compileCommand = exec.Command("cargo", "build", "--target", "x86_64-unknown-linux-musl")
+		args = []string{"build", "--target", "x86_64-unknown-linux-musl"}
 	} else {
-		compileCommand = exec.Command("cargo", "build", "--release", "--target", "x86_64-unknown-linux-musl")
-	}
-	// Root Cargo.toml is in runtime dir in runtime
-	compileCommand.Dir = path.Join(targetDirectory, "runtime")
-	// Configure proper logging
-	compileCommand.Stdout = config.GetLoggerWriter()
-	compileCommand.Stderr = config.GetLoggerWriter()
-	compileCommand.Env = os.Environ()
-
-	envFlags, ok := functionConfiguration[buildEnvVariables]
-	if ok {
-		for _, env := range envFlags {
-			log.Printf("Adding env variable to cargo build: %s", env)
-			compileCommand.Env = append(compileCommand.Env, env)
-		}
+		args = []string{"build", "--release", "--target", "x86_64-unknown-linux-musl"}
 	}
 
-	err := compileCommand.Run()
+	err := util.RunCommand("cargo", args, path.Join(targetDirectory, "runtime"), functionConfiguration[buildEnvVariables])
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error occurred while trying to compile. Check if you installed correctly 'https://www.musl-libc.org/how.html' and musl rustc target with 'rustup target add x86_64-unknown-linux-musl'")
 	}

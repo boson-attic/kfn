@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"path"
 	"strings"
 
@@ -160,16 +158,13 @@ func (r jsLanguageManager) UnitTest(mainFile string, functionConfiguration map[s
 		return err
 	}
 
-	var testCommand = exec.Command("npm", "test")
+	// npm install --only=dev to install test framework
+	err = util.RunCommand("npm", []string{"install", "--only=dev"}, path.Join(targetDirectory, "usr"))
+	if err != nil {
+		return err
+	}
 
-	// Root package.json is in usr dir
-	testCommand.Dir = path.Join(targetDirectory, "usr")
-	// Configure proper logging
-	testCommand.Stdout = config.GetLoggerWriter()
-	testCommand.Stderr = config.GetLoggerWriter()
-	testCommand.Env = os.Environ()
-
-	err = testCommand.Run()
+	err = util.RunCommand("npm", []string{"test"}, path.Join(targetDirectory, "usr"))
 	if err != nil {
 		return errors.Wrap(err, "error occurred while testing function")
 	}

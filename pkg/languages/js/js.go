@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"path"
 	"strings"
 
 	"github.com/containers/image/types"
+	"github.com/pkg/errors"
+
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"github.com/slinkydeveloper/kfn/pkg/image"
 	"github.com/slinkydeveloper/kfn/pkg/languages"
@@ -20,10 +24,6 @@ const (
 
 type jsLanguageManager struct {
 	resourceLoader util.ResourceLoader
-}
-
-func (r jsLanguageManager) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
-	panic("implement me")
 }
 
 func NewJsLanguageManger() languages.LanguageManager {
@@ -137,7 +137,44 @@ func (j jsLanguageManager) ConfigureTargetDirectory(mainFile string, functionCon
 		return err
 	}
 
+	// Configure test file
+	testFile := util.UnitTestFile(mainFile)
+	if util.FsExist(testFile) {
+		err = util.MkdirpIfNotExists(path.Join(targetDirectory, "usr", "tests"))
+		if err != nil {
+			return err
+		}
+
+		err := util.Copy(testFile, path.Join(targetDirectory, "usr", "tests", "index_test.js"))
+		if err != nil {
+			return err
+		}
+	}
+
 	return util.Copy(runtimeDirectory(), path.Join(targetDirectory, "src"))
+}
+
+func (r jsLanguageManager) UnitTest(mainFile string, functionConfiguration map[string][]string, targetDirectory string) error {
+	err := util.CommandsExists("npm")
+	if err != nil {
+		return err
+	}
+
+	var testCommand = exec.Command("npm", "test")
+
+	// Root package.json is in usr dir
+	testCommand.Dir = path.Join(targetDirectory, "usr")
+	// Configure proper logging
+	testCommand.Stdout = config.GetLoggerWriter()
+	testCommand.Stderr = config.GetLoggerWriter()
+	testCommand.Env = os.Environ()
+
+	err = testCommand.Run()
+	if err != nil {
+		return errors.Wrap(err, "error occurred while testing function")
+	}
+
+	return nil
 }
 
 func runtimeDirectory() string {
@@ -157,13 +194,20 @@ func generatePackageJson(configurationEntries map[string][]string) ([]byte, erro
 		for _, dep := range deps {
 			splitted := strings.Split(dep, " ")
 			if len(splitted) != 2 {
-				return nil, fmt.Errorf("Invalid dependency entry: %v", dep)
+				return nil, fmt.Errorf("invalid dependency entry: %v", dep)
 			}
 			depsRoot[strings.Trim(splitted[0], " ")] = strings.Trim(splitted[1], " ")
 		}
 	}
 
+	root["scripts"] = map[string]string{
+		"test": "tape tests/**/*.js",
+	}
+
 	root["dependencies"] = depsRoot
+	root["devDependencies"] = map[string]string{
+		"tape": "4.11.0",
+	}
 
 	return json.MarshalIndent(root, "", "  ")
 }

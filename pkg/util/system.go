@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,4 +37,34 @@ func RunCommand(command string, params []string, workingDir string, envVariables
 	}
 
 	return cmd.Run()
+}
+
+func RunCommandWithOutputBuffering(command string, params []string, workingDir string, envVariables ...[]string) (string, error) {
+	var cmd = exec.Command(command, params...)
+
+	cmd.Dir = workingDir
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	cmd.Env = os.Environ()
+
+	for _, envs := range envVariables {
+		if envs != nil {
+			cmd.Env = append(cmd.Env, envs...)
+		}
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	if stderr.Len() != 0 {
+		return "", errors.New(stderr.String())
+	}
+
+	return stdout.String(), nil
 }

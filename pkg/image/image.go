@@ -5,6 +5,7 @@ import (
 	"github.com/containers/image/transports"
 	"github.com/containers/image/transports/alltransports"
 	"github.com/containers/image/types"
+	"github.com/sirupsen/logrus"
 	"github.com/slinkydeveloper/kfn/pkg/config"
 	"strings"
 )
@@ -16,6 +17,7 @@ type FunctionImage struct {
 
 func (image FunctionImage) ParseSpecDest() (types.ImageReference, error) {
 	destSpec := image.FullName()
+	logrus.Debugf("Image full name: %s", destSpec)
 	dest, err := alltransports.ParseImageName(destSpec)
 	// add the docker:// transport to see if they neglected it.
 	if err != nil {

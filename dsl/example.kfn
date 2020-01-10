@@ -1,0 +1,4 @@
+service_one: Function "service.rs"
+service_two: "example.rs"
+source_cron: CronSource with schedule "*/2 * * * *" and data "Hello kfn!"
+source_cron => service_two => "service_three.rs" -> KafkaChannel => service_two

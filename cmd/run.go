@@ -60,7 +60,7 @@ func runCmdFn(cmd *cobra.Command, args []string) {
 		panic(fmt.Sprintf("Cannot create a serving client: %+v", err))
 	}
 
-	err = functionImage.RunImage(servingClient.ServingV1alpha1(), serviceName, config.Namespace)
+	err = functionImage.RunImage(servingClient, serviceName)
 
 	if err != nil {
 		panic(fmt.Sprintf("Cannot deploy the service: %+v", err))

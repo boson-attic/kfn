@@ -1,0 +1,15 @@
+@startuml
+
+title source-a -> channel-b -> ksvc-c without reply
+
+participant "source-a" as source
+participant dispatcher
+participant "ksvc-c" as ksvc
+
+source -> dispatcher: Publish event
+return 202 Accepted
+
+dispatcher -> ksvc: New event
+return 202 Accepted
+
+@enduml

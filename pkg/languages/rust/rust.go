@@ -153,9 +153,9 @@ func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[
 
 	var compileCommand *exec.Cmd
 	if devMode {
-		compileCommand = exec.Command("cargo", "build", "--target", "x86_64-unknown-linux-musl")
+		compileCommand = exec.Command("cargo", "build", "--target", "x86_64-unknown-linux-musl", "--features", "external-function")
 	} else {
-		compileCommand = exec.Command("cargo", "build", "--release", "--target", "x86_64-unknown-linux-musl")
+		compileCommand = exec.Command("cargo", "build", "--release", "--target", "x86_64-unknown-linux-musl", "--features", "external-function")
 	}
 	// Root Cargo.toml is in runtime dir in runtime
 	compileCommand.Dir = path.Join(targetDirectory, "runtime")
@@ -174,7 +174,7 @@ func (r rustLanguageManager) Compile(mainFile string, functionConfiguration map[
 
 	err := compileCommand.Run()
 	if err != nil {
-		return "", nil, errors.Wrap(err, "error occurred while trying to compile. Check if you installed correctly 'https://www.musl-libc.org/how.html' and musl rustc target with 'rustup target add x86_64-unknown-linux-musl'")
+		return "", nil, errors.Wrap(err, "An error occurred while trying to compile. Check if you installed correctly 'https://www.musl-libc.org/how.html' and musl rustc target with 'rustup target add x86_64-unknown-linux-musl'")
 	}
 
 	if devMode {
@@ -216,16 +216,25 @@ func runtimeDirectory() string {
 }
 
 type CargoFile struct {
-	Package      map[string]string `toml:"package"`
-	Lib          map[string]string `toml:"lib"`
-	Dependencies map[string]string `toml:"dependencies"`
+	Package      map[string]string            `toml:"package"`
+	Lib          map[string]string            `toml:"lib"`
+	Dependencies map[string]map[string]string `toml:"dependencies"`
 }
 
 func generateCargoToml(configurationEntries map[string][]string) ([]byte, error) {
-	deps := make(map[string]string)
-	deps["actix-web"] = "1.0.8"
-	deps["serde_json"] = "1.0"
-	deps["futures"] = "0.1.29"
+	deps := make(map[string]map[string]string)
+	deps["actix-web"] = map[string]string{
+		"version": "1.0.8",
+	}
+	deps["serde_json"] = map[string]string{
+		"version": "1.0",
+	}
+	deps["futures"] = map[string]string{
+		"version": "0.1.29",
+	}
+	deps["cloudevent"] = map[string]string{
+		"path": "/home/francesco/projects/faas-rust-runtime/cloudevent",
+	}
 
 	if depConfigs, ok := configurationEntries[util.DEPENDENCY]; ok {
 		for _, dep := range depConfigs {
@@ -233,7 +242,9 @@ func generateCargoToml(configurationEntries map[string][]string) ([]byte, error)
 			if len(splitted) != 2 {
 				return nil, fmt.Errorf("Invalid dependency entry: %v", dep)
 			}
-			deps[strings.Trim(splitted[0], " ")] = strings.Trim(splitted[1], " ")
+			deps[strings.Trim(splitted[0], " ")] = map[string]string{
+				"version": strings.Trim(splitted[1], " "),
+			}
 		}
 	}
 

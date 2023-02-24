@@ -30,7 +30,7 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
-	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
+	k8s.io/apimachinery v0.15.7
 	k8s.io/client-go v0.0.0-20190226174127-78295b709ec6
 	k8s.io/kube-openapi v0.0.0-20190722073852-5e22f3d471e6 // indirect
 	knative.dev/pkg v0.0.0-20190912002835-87ad48336517 // indirect
